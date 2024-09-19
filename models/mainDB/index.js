@@ -14,7 +14,7 @@ const Clinic = clinicModel(sequelize);
 // Sync the main database with the global models
 const syncMainDatabase = async () => {
   try {
-    await sequelize.sync({ force: true });  // Sync only global models (users, clinics)
+    await sequelize.sync({ force: false });  // Sync only global models (users, clinics)
     console.log('Main database synced successfully.');
   } catch (error) {
     console.error('Error syncing main database:', error);

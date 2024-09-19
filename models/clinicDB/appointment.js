@@ -23,7 +23,7 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'medics', // References the medics table
+        model: 'clinic_users', // References the medics table
         key: 'id',
       },
       onDelete: 'CASCADE', // Delete appointment if the medic is deleted
