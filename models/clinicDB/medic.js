@@ -1,8 +1,8 @@
-// models/Patient.js
+// models/Medic.js
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-  const Patient = sequelize.define('Patient', {
+  const Medic = sequelize.define('Medic', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
@@ -17,44 +17,37 @@ module.exports = (sequelize) => {
       allowNull: true,
       field: 'phone_number',
     },
-    address: {
+    specialization: {
       type: DataTypes.STRING,
       allowNull: true,
     },
-    age: {
-      type: DataTypes.INTEGER,
+    employmentType: {
+      type: DataTypes.ENUM('full-time', 'part-time'),
       allowNull: true,
-      field: 'age',
     },
-    medicalHistory: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-      field: 'medical_history',
-    },
-    hygieneHabits: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: true,
-      field: 'hygiene_habits',
-    },
-    files: {
+    services: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
-    medicalRecord: {
+    workingHours: {
       type: DataTypes.JSON,
       allowNull: true,
-      field: 'medical_record',
     },
-    tag: {
-      type: DataTypes.STRING,
+    daysOff: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
-    // Additional patient-specific fields can be added here
   }, {
-    tableName: 'patients',
-    timestamps: true, // Add if you want createdAt and updatedAt
+    tableName: 'medics',
+    timestamps: true, // Include createdAt and updatedAt
   });
 
+  Medic.associate = (models) => {
+    Medic.belongsTo(models.ClinicUser, {
+      foreignKey: 'id',
+      as: 'clinicUser',
+    });
+  };
 
-  return Patient;
+  return Medic;
 };

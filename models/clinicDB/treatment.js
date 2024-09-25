@@ -28,6 +28,11 @@ module.exports = (sequelize) => {
       type: DataTypes.FLOAT,
       allowNull: false,
     },
+    color: {
+      type: DataTypes.STRING, // Hex code or color name
+      allowNull: false,
+      defaultValue: '#FFFFFF', // Default color if not specified
+    },
   }, {
     tableName: 'treatments',  // Explicitly set the table name
   });

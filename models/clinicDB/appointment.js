@@ -69,6 +69,16 @@ module.exports = (sequelize) => {
       type: DataTypes.BOOLEAN, // Indicates if payment has been made
       defaultValue: false,
     },
+    status: {
+      type: DataTypes.ENUM('done', 'not done', 'not paid', 'missed', 'ongoing'),
+      allowNull: false,
+      defaultValue: 'ongoing',
+    },
+    color: {
+      type: DataTypes.STRING, // Hex code or color name
+      allowNull: false,
+      defaultValue: '#FFFFFF', // Default color if not specified
+    },
   }, {
     tableName: 'appointments',  // Explicitly set the table name
   });
