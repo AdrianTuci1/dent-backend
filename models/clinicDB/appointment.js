@@ -1,86 +1,51 @@
-const { DataTypes } = require('sequelize');
-
-module.exports = (sequelize) => {
+// models/appointment.js
+module.exports = (sequelize, DataTypes) => {
   const Appointment = sequelize.define('Appointment', {
-    id: {
-      type: DataTypes.INTEGER,
+    appointmentId: {
+      type: DataTypes.STRING,
       primaryKey: true,
-      autoIncrement: true,
+      allowNull: false,
     },
     date: {
-      type: DataTypes.DATEONLY, // Stores only the date
+      type: DataTypes.DATEONLY, // Format: 'YYYY-MM-DD'
       allowNull: false,
     },
-    startHour: {
-      type: DataTypes.TIME, // Stores the start time of the appointment
+    time: {
+      type: DataTypes.STRING, // Format: 'HH:MM'
       allowNull: false,
     },
-    endHour: {
-      type: DataTypes.TIME, // Stores the end time of the appointment
+    isDone: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    price: {
+      type: DataTypes.FLOAT,
       allowNull: false,
     },
-    medicId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'clinic_users', // References the medics table
-        key: 'id',
-      },
-      onDelete: 'CASCADE', // Delete appointment if the medic is deleted
+    isPaid: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
-    medicName: {
-      type: DataTypes.STRING,
+    status: {
+      type: DataTypes.ENUM('done', 'upcoming', 'missed', 'not-paid'),
       allowNull: false,
     },
     patientId: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'patients', // References the patients table
+        model: 'Patients',
         key: 'id',
       },
-      onDelete: 'CASCADE', // Delete appointment if the patient is deleted
     },
-    patientName: {
-      type: DataTypes.STRING,
+    medicId: {
+      type: DataTypes.INTEGER,
       allowNull: false,
+      references: {
+        model: 'Medics',
+        key: 'id',
+      },
     },
-    details: {
-      type: DataTypes.TEXT, // Optional additional details
-      allowNull: true,
-    },
-    treatment: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    involvedTeeth: {
-      type: DataTypes.ARRAY(DataTypes.STRING), // Stores multiple involved teeth as an array of strings
-      allowNull: true,
-    },
-    prescription: {
-      type: DataTypes.TEXT, // Stores the prescription if any
-      allowNull: true,
-    },
-    price: {
-      type: DataTypes.FLOAT, // Stores the price of the treatment
-      allowNull: false,
-    },
-    paid: {
-      type: DataTypes.BOOLEAN, // Indicates if payment has been made
-      defaultValue: false,
-    },
-    status: {
-      type: DataTypes.ENUM('done', 'not done', 'not paid', 'missed', 'ongoing'),
-      allowNull: false,
-      defaultValue: 'ongoing',
-    },
-    color: {
-      type: DataTypes.STRING, // Hex code or color name
-      allowNull: false,
-      defaultValue: '#FFFFFF', // Default color if not specified
-    },
-  }, {
-    tableName: 'appointments',  // Explicitly set the table name
   });
 
   return Appointment;

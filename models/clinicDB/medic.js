@@ -1,53 +1,56 @@
-// models/Medic.js
-const { DataTypes } = require('sequelize');
-
-module.exports = (sequelize) => {
+// models/medic.js
+module.exports = (sequelize, DataTypes) => {
   const Medic = sequelize.define('Medic', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       references: {
-        model: 'clinic_users', // Ensure this matches the table name in ClinicUser
+        model: 'ClinicUsers',
         key: 'id',
       },
-      onDelete: 'CASCADE',
     },
-    phoneNumber: {
+    name: {
       type: DataTypes.STRING,
-      allowNull: true,
-      field: 'phone_number',
-    },
-    specialization: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     employmentType: {
-      type: DataTypes.ENUM('full-time', 'part-time'),
+      type: DataTypes.ENUM('full-time', 'part-time', 'contract'),
+      allowNull: false,
+    },
+    role: {
+      type: DataTypes.STRING, // e.g., 'Dentist', 'Orthodontist'
+      allowNull: false,
+    },
+    phone: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
-    services: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
+    email: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: { isEmail: true },
+    },
+    address: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
-    workingHours: {
-      type: DataTypes.JSON,
+    assignedTreatments: {
+      type: DataTypes.ARRAY(DataTypes.STRING), // List of Treatment IDs or names
+      allowNull: true,
+    },
+    workingDaysHours: {
+      type: DataTypes.JSON, // e.g., { Mon: '9am-5pm', Tue: '9am-5pm' }
       allowNull: true,
     },
     daysOff: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
+      type: DataTypes.ARRAY(DataTypes.STRING), // e.g., ['Saturday', 'Sunday']
       allowNull: true,
     },
-  }, {
-    tableName: 'medics',
-    timestamps: true, // Include createdAt and updatedAt
+    permissions: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
   });
-
-  Medic.associate = (models) => {
-    Medic.belongsTo(models.ClinicUser, {
-      foreignKey: 'id',
-      as: 'clinicUser',
-    });
-  };
 
   return Medic;
 };

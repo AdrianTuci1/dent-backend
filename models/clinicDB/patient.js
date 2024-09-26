@@ -1,60 +1,56 @@
-// models/Patient.js
-const { DataTypes } = require('sequelize');
-
-module.exports = (sequelize) => {
+// models/patient.js
+module.exports = (sequelize, DataTypes) => {
   const Patient = sequelize.define('Patient', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       references: {
-        model: 'clinic_users', // Ensure this matches the table name in ClinicUser
+        model: 'ClinicUsers',
         key: 'id',
       },
-      onDelete: 'CASCADE',
     },
-    phoneNumber: {
+    age: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    gender: {
+      type: DataTypes.ENUM('Male', 'Female', 'Other'),
+      allowNull: true,
+    },
+    phone: {
       type: DataTypes.STRING,
       allowNull: true,
-      field: 'phone_number',
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: { isEmail: true },
     },
     address: {
       type: DataTypes.STRING,
       allowNull: true,
     },
-    age: {
-      type: DataTypes.INTEGER,
+    labels: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
-      field: 'age',
     },
-    medicalHistory: {
+    notes: {
       type: DataTypes.TEXT,
       allowNull: true,
-      field: 'medical_history',
     },
-    hygieneHabits: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
+    dentalHistory: {
+      type: DataTypes.JSON, // Map each tooth to treatments
       allowNull: true,
-      field: 'hygiene_habits',
     },
     files: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
+      type: DataTypes.ARRAY(DataTypes.STRING), // Paths or URLs to files
       allowNull: true,
     },
-    medicalRecord: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      field: 'medical_record',
-    },
-    tag: {
-      type: DataTypes.STRING,
+    paymentsMade: {
+      type: DataTypes.ARRAY(DataTypes.FLOAT),
       allowNull: true,
     },
-    // Additional patient-specific fields can be added here
-  }, {
-    tableName: 'patients',
-    timestamps: true, // Add if you want createdAt and updatedAt
   });
-
 
   return Patient;
 };

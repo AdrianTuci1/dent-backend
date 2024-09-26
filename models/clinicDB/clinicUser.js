@@ -1,7 +1,5 @@
-// models/ClinicUser.js
-const { DataTypes } = require('sequelize');
-
-module.exports = (sequelize) => {
+// models/clinicUser.js
+module.exports = (sequelize, DataTypes) => {
   const ClinicUser = sequelize.define('ClinicUser', {
     id: {
       type: DataTypes.INTEGER,
@@ -12,9 +10,7 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       unique: true,
       allowNull: false,
-      validate: {
-        isEmail: true,
-      },
+      validate: { isEmail: true },
     },
     name: {
       type: DataTypes.STRING,
@@ -29,19 +25,15 @@ module.exports = (sequelize) => {
       allowNull: false,
     },
     pin: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING, // Hashed PIN
       allowNull: true,
     },
     subaccount_of: {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'clinic_users',
+        model: 'ClinicUsers',
         key: 'id',
-      },
-      onDelete: 'SET NULL',
-      validate: {
-        isInt: true,
       },
     },
     permissions: {
@@ -52,16 +44,8 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
     },
-  }, {
-    tableName: 'clinic_users',
-    hooks: {
-      beforeDestroy: (clinicUser, options) => {
-        if (clinicUser.role === 'admin') {
-          throw new Error('Admin account cannot be deleted.');
-        }
-      },
-    },
   });
-  return ClinicUser;
 
-}
+  // Associations will be defined in models/index.js
+  return ClinicUser;
+};

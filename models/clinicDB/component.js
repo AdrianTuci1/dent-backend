@@ -1,40 +1,28 @@
-const { DataTypes } = require('sequelize');
-
-module.exports = (sequelize) => {
+// models/component.js
+module.exports = (sequelize, DataTypes) => {
   const Component = sequelize.define('Component', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
     },
-    code: {
-      type: DataTypes.STRING,
-      unique: true,
-      allowNull: false,
-    },
-    name: {
+    componentName: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    description: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    price: {
+    unitPrice: {
       type: DataTypes.FLOAT,
       allowNull: false,
     },
-    stockQuantity: {
+    vendor: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    quantity: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
     },
-    supplier: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-  }, {
-    tableName: 'components',  // Explicitly set the table name
   });
 
   return Component;

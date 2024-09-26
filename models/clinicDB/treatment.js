@@ -1,20 +1,18 @@
-const { DataTypes } = require('sequelize');
-
-module.exports = (sequelize) => {
+// models/treatment.js
+module.exports = (sequelize, DataTypes) => {
   const Treatment = sequelize.define('Treatment', {
     id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    code: {
       type: DataTypes.STRING,
-      unique: true,
+      primaryKey: true,
       allowNull: false,
     },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    category: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     description: {
       type: DataTypes.TEXT,
@@ -28,13 +26,6 @@ module.exports = (sequelize) => {
       type: DataTypes.FLOAT,
       allowNull: false,
     },
-    color: {
-      type: DataTypes.STRING, // Hex code or color name
-      allowNull: false,
-      defaultValue: '#FFFFFF', // Default color if not specified
-    },
-  }, {
-    tableName: 'treatments',  // Explicitly set the table name
   });
 
   return Treatment;

@@ -2,24 +2,29 @@
 const Sequelize = require('sequelize');
 const clinicUserModel = require('./clinicUser');
 const patientModel = require('./patient');
-const medicModel = require('./medic'); // Ensure this import exists
+const medicModel = require('./medic');
 const appointmentModel = require('./appointment');
 const treatmentModel = require('./treatment');
 const componentModel = require('./component');
+const appointmentTreatmentModel = require('./appointmentTreatment');
+const treatmentComponentModel = require('./treatmentComponent');
+const dentalHistoryModel = require('./dentalHistory'); // If using
 
-// Function to initialize a clinic-specific database connection
 const initializeClinicDatabase = (dbName) => {
   const clinicSequelize = new Sequelize(`postgres://admin:admin@postgres:5432/${dbName}`, {
-    logging: false, // Disable logging; set to true for debugging
+    logging: false,
   });
 
   // Initialize all models
-  const ClinicUser = clinicUserModel(clinicSequelize);
-  const Patient = patientModel(clinicSequelize);
-  const Medic = medicModel(clinicSequelize);
-  const Appointment = appointmentModel(clinicSequelize);
-  const Treatment = treatmentModel(clinicSequelize);
-  const Component = componentModel(clinicSequelize);
+  const ClinicUser = clinicUserModel(clinicSequelize, Sequelize.DataTypes);
+  const Patient = patientModel(clinicSequelize, Sequelize.DataTypes);
+  const Medic = medicModel(clinicSequelize, Sequelize.DataTypes);
+  const Appointment = appointmentModel(clinicSequelize, Sequelize.DataTypes);
+  const Treatment = treatmentModel(clinicSequelize, Sequelize.DataTypes);
+  const Component = componentModel(clinicSequelize, Sequelize.DataTypes);
+  const AppointmentTreatment = appointmentTreatmentModel(clinicSequelize, Sequelize.DataTypes);
+  const TreatmentComponent = treatmentComponentModel(clinicSequelize, Sequelize.DataTypes);
+  const DentalHistory = dentalHistoryModel(clinicSequelize, Sequelize.DataTypes); // If using
 
   // Set up associations
 
@@ -57,12 +62,12 @@ const initializeClinicDatabase = (dbName) => {
     as: 'subaccounts',
   });
 
-  // ClinicUser (Medic) hasMany Appointments
-  ClinicUser.hasMany(Appointment, {
+  // Medic hasMany Appointments
+  Medic.hasMany(Appointment, {
     foreignKey: 'medicId',
-    as: 'appointmentsAsMedic',
+    as: 'appointments',
   });
-  Appointment.belongsTo(ClinicUser, {
+  Appointment.belongsTo(Medic, {
     foreignKey: 'medicId',
     as: 'medic',
   });
@@ -77,30 +82,42 @@ const initializeClinicDatabase = (dbName) => {
     as: 'patient',
   });
 
-  // Appointment hasMany Treatments
-  Appointment.hasMany(Treatment, {
+  // Many-to-many between Appointment and Treatment via AppointmentTreatment
+  Appointment.belongsToMany(Treatment, {
+    through: AppointmentTreatment,
     foreignKey: 'appointmentId',
+    otherKey: 'treatmentId',
     as: 'treatments',
   });
-  Treatment.belongsTo(Appointment, {
-    foreignKey: 'appointmentId',
-    as: 'appointment',
+  Treatment.belongsToMany(Appointment, {
+    through: AppointmentTreatment,
+    foreignKey: 'treatmentId',
+    otherKey: 'appointmentId',
+    as: 'appointments',
   });
 
-  // Treatment hasMany Components
-  Treatment.hasMany(Component, {
+  // Many-to-many between Treatment and Component via TreatmentComponent
+  Treatment.belongsToMany(Component, {
+    through: TreatmentComponent,
     foreignKey: 'treatmentId',
+    otherKey: 'componentId',
     as: 'components',
   });
-  Component.belongsTo(Treatment, {
-    foreignKey: 'treatmentId',
-    as: 'treatment',
+  Component.belongsToMany(Treatment, {
+    through: TreatmentComponent,
+    foreignKey: 'componentId',
+    otherKey: 'treatmentId',
+    as: 'treatments',
   });
+
+  // If using DentalHistory model
+  Patient.hasMany(DentalHistory, { foreignKey: 'patientId', as: 'dentalHistories' });
+  DentalHistory.belongsTo(Patient, { foreignKey: 'patientId', as: 'patient' });
 
   // Sync the database
   const syncClinicDatabase = async () => {
     try {
-      await clinicSequelize.sync({ force: true }); // Set to true to drop and recreate tables
+      await clinicSequelize.sync({ force: true });
       console.log(`${dbName} synced successfully.`);
     } catch (error) {
       console.error(`Error syncing ${dbName}:`, error);
@@ -115,6 +132,9 @@ const initializeClinicDatabase = (dbName) => {
     Appointment,
     Treatment,
     Component,
+    AppointmentTreatment,
+    TreatmentComponent,
+    // DentalHistory, // If using
     syncClinicDatabase,
   };
 };
