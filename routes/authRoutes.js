@@ -1,9 +1,18 @@
+// routes/authRoutes.js
+
 const express = require('express');
-const { clinicLogin } = require('../controllers/clinicDB/authController');
 const router = express.Router();
+const AuthenticationController = require('../controllers/clinicDB/authController');
+const authenticate = require('../middleware/authenticate');
 
-// Clinic login route
-router.post('/login', clinicLogin);
+// Login route for all roles (clinic, admin, medic, patient)
+router.post('/login', AuthenticationController.login);
 
+// Subaccount PIN Login (for medics)
+router.post(
+  '/subaccount/pin-login',
+  authenticate, // Ensure clinic user is authenticated
+  AuthenticationController.subaccountPinLogin
+);
 
 module.exports = router;

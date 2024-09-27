@@ -89,7 +89,7 @@ const seedDemoData = async () => {
           email: 'admin@demo.dentms.ro',
           name: 'Demo Admin',
           password: hashedPassword,
-          role: 'admin',
+          role: 'clinic',
           subaccount_of: null,
           permissions: {
             allAppointments: true,
