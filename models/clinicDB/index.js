@@ -134,7 +134,7 @@ const initializeClinicDatabase = (dbName) => {
     Component,
     AppointmentTreatment,
     TreatmentComponent,
-    // DentalHistory, // If using
+    DentalHistory, // If using
     syncClinicDatabase,
   };
 };

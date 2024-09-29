@@ -1,9 +1,9 @@
 const express = require('express');
 const dotenv = require('dotenv');
+const cors = require('cors');  // Import the cors package
 const db = require('./models/mainDB');  // Import Sequelize models
 const authRoutes = require('./routes/authRoutes');  // Import routes
 const clinicRoutes = require('./routes/clinicRoutes');
-const { authenticate } = require('./middleware/authMiddleware');  // Import middleware
 
 // Load environment variables from .env file
 dotenv.config();
@@ -11,12 +11,15 @@ dotenv.config();
 // Initialize Express app
 const app = express();
 
+// Use CORS middleware (apply to all routes by default)
+app.use(cors());
+
 // Middleware to parse JSON requests
 app.use(express.json());
 
 // Define routes
 app.use('/api/auth', authRoutes);         // Authentication routes
-app.use('/api/clinic', authenticate, clinicRoutes); // Protected clinic routes
+app.use('/api/clinic', clinicRoutes); // Protected clinic routes
 
 // Home route for testing
 app.get('/', (req, res) => {
