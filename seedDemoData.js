@@ -1,5 +1,3 @@
-// seedDemoData.js
-
 const bcrypt = require('bcrypt');
 const Sequelize = require('sequelize');
 const { User, Clinic, syncMainDatabase } = require('./models/mainDB');  // Main database models and sync function
@@ -57,18 +55,17 @@ const seedDemoData = async () => {
       console.log('Database demo_db already exists.');
     }
 
-
-  // Initialize and sync the demo clinic database
-  const {
-    ClinicUser,
-    Appointment,
-    Patient,
-    Medic,
-    Treatment,
-    Component,
-    syncClinicDatabase,
-  } = initializeClinicDatabase('demo_db');
-
+    // Initialize and sync the demo clinic database
+    const {
+      ClinicUser,
+      Appointment,
+      Patient,
+      Medic,
+      Treatment,
+      Component,
+      AppointmentTreatment, // Include AppointmentTreatment
+      syncClinicDatabase,
+    } = initializeClinicDatabase('demo_db');
 
     await syncClinicDatabase(); // Sync clinic-specific models
     console.log('Demo clinic database synced successfully.');
@@ -209,26 +206,28 @@ const seedDemoData = async () => {
         }, { transaction });
         console.log('Treatment created:', treatment.toJSON());
 
-        // Create Appointment
+        // Create Appointment with initial treatment
         const appointment = await Appointment.create({
           appointmentId: '#AP0001',
           date: new Date().toISOString().split('T')[0], // Current date in 'YYYY-MM-DD' format
           time: '10:00', // Format: 'HH:MM'
           isDone: false,
-          caseDetails: [{
-            details: 'Routine teeth cleaning.',
-            treatmentId: treatment.id,
-            units: 1,
-            involvedTeeth: [], // Not specific to certain teeth
-            prescription: null,
-          }],
           price: treatment.price,
           isPaid: false,
           status: 'upcoming', // Initial status
-          patientId: patientProfile.id,
-          medicId: medicProfile.id,
+          medicUser: medicUser.id,  // ClinicUser as medic
+          patientUser: patientUser.id, // ClinicUser as patient
+          initialAppointment: true, // Flag for the initial appointment
         }, { transaction });
         console.log('Appointment created:', appointment.toJSON());
+
+        // Associate the appointment with the initial treatment
+        await AppointmentTreatment.create({
+          appointmentId: appointment.appointmentId,
+          treatmentId: treatment.id,
+          units: 1, // Number of units for the treatment in this appointment
+        }, { transaction });
+        console.log('Initial treatment associated with appointment:', appointment.toJSON());
 
         // Commit the transaction
         await transaction.commit();
@@ -245,7 +244,6 @@ const seedDemoData = async () => {
     console.error('Error seeding demo data:', error.message);
     console.error('Stack trace:', error.stack);
   }
-
 };
 
 seedDemoData();

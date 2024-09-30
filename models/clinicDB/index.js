@@ -1,4 +1,3 @@
-// models/index.js
 const Sequelize = require('sequelize');
 const clinicUserModel = require('./clinicUser');
 const patientModel = require('./patient');
@@ -62,23 +61,22 @@ const initializeClinicDatabase = (dbName) => {
     as: 'subaccounts',
   });
 
-  // Medic hasMany Appointments
-  Medic.hasMany(Appointment, {
-    foreignKey: 'medicId',
-    as: 'appointments',
+  // ClinicUser hasMany Appointments as medic and patient
+  ClinicUser.hasMany(Appointment, {
+    foreignKey: 'medicUser',
+    as: 'medicAppointments',
   });
-  Appointment.belongsTo(Medic, {
-    foreignKey: 'medicId',
-    as: 'medic',
+  ClinicUser.hasMany(Appointment, {
+    foreignKey: 'patientUser',
+    as: 'patientAppointments',
   });
 
-  // Patient hasMany Appointments
-  Patient.hasMany(Appointment, {
-    foreignKey: 'patientId',
-    as: 'appointments',
+  Appointment.belongsTo(ClinicUser, {
+    foreignKey: 'medicUser',
+    as: 'medic',
   });
-  Appointment.belongsTo(Patient, {
-    foreignKey: 'patientId',
+  Appointment.belongsTo(ClinicUser, {
+    foreignKey: 'patientUser',
     as: 'patient',
   });
 

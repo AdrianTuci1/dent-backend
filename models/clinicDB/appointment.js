@@ -1,4 +1,3 @@
-// models/appointment.js
 module.exports = (sequelize, DataTypes) => {
   const Appointment = sequelize.define('Appointment', {
     appointmentId: {
@@ -30,19 +29,23 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.ENUM('done', 'upcoming', 'missed', 'not-paid'),
       allowNull: false,
     },
-    patientId: {
+    initialAppointment: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,  // Indicates if this is the initial appointment
+    },
+    medicUser: {  // Reference to the ClinicUser acting as the medic
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Patients',
+        model: 'ClinicUsers', // ClinicUser table
         key: 'id',
       },
     },
-    medicId: {
+    patientUser: {  // Reference to the ClinicUser acting as the patient
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Medics',
+        model: 'ClinicUsers', // ClinicUser table
         key: 'id',
       },
     },
