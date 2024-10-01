@@ -1,9 +1,12 @@
 const express = require('express');
 const dotenv = require('dotenv');
-const cors = require('cors');  // Import the cors package
+const cors = require('cors');
 const db = require('./models/mainDB');  // Import Sequelize models
 const authRoutes = require('./routes/authRoutes');  // Import routes
 const clinicRoutes = require('./routes/clinicRoutes');
+const http = require('http');
+const WebSocket = require('ws');
+const setupAppointmentsWebSocket = require('./websockets/appointmentsSockets');
 
 // Load environment variables from .env file
 dotenv.config();
@@ -12,14 +15,21 @@ dotenv.config();
 const app = express();
 
 // Use CORS middleware (apply to all routes by default)
-app.use(cors());
+const corsOptions = {
+  origin: ['http://localhost:3000', 'http://localhost:5173'], // Adjust as needed
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],  // Allowed methods
+  credentials: true,  // If using cookies or authentication headers
+};
+app.use(cors(corsOptions));
 
 // Middleware to parse JSON requests
 app.use(express.json());
 
+const server = http.createServer(app);
+
 // Define routes
 app.use('/api/auth', authRoutes);         // Authentication routes
-app.use('/api/clinic', clinicRoutes); // Protected clinic routes
+app.use('/api/clinic', clinicRoutes);     // Protected clinic routes
 
 // Home route for testing
 app.get('/', (req, res) => {
@@ -40,10 +50,28 @@ db.sequelize.authenticate()
     console.log('Database connected successfully');
     
     // Sync the database models
-    return db.syncMainDatabase();  // Make sure this is called before starting the server
+    return db.syncMainDatabase();  // Ensure this syncs the database properly
   })
   .then(() => {
-    app.listen(PORT, () => {
+    // Web Sockets - Initialize the WebSocket server after database is ready
+    const wss = new WebSocket.Server({ noServer: true });
+
+    // Handle WebSocket upgrades only for the appointment socket path
+    server.on('upgrade', (request, socket, head) => {
+      if (request.url === '/api/appointment-socket') {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          wss.emit('connection', ws, request);
+        });
+      } else {
+        socket.destroy();  // Destroy any connection that does not match the WebSocket path
+      }
+    });
+
+    // Set up WebSocket for appointments
+    setupAppointmentsWebSocket(wss);
+
+    // Start the HTTP server after WebSocket is set up
+    server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   })
