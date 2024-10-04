@@ -208,7 +208,7 @@ const seedDemoData = async () => {
 
         // Create Appointment with initial treatment
         const appointment = await Appointment.create({
-          appointmentId: '#AP0001',
+          appointmentId: 'AP0001',
           date: new Date().toISOString().split('T')[0], // Current date in 'YYYY-MM-DD' format
           time: '10:00', // Format: 'HH:MM'
           isDone: false,
@@ -217,7 +217,6 @@ const seedDemoData = async () => {
           status: 'upcoming', // Initial status
           medicUser: medicUser.id,  // ClinicUser as medic
           patientUser: patientUser.id, // ClinicUser as patient
-          initialAppointment: true, // Flag for the initial appointment
         }, { transaction });
         console.log('Appointment created:', appointment.toJSON());
 

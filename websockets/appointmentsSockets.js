@@ -35,14 +35,14 @@ function setupAppointmentsWebSocket(wss) {
           // Send appointments back to the client
           appointments.forEach((appointment) => {
             const response = {
-              id: appointment.appointmentId,
+              appointmentId: appointment.appointmentId,
               status: appointment.status,
-              treatmentName: appointment.treatments[0]?.name || 'No treatment',
+              initialTreatment: appointment.treatments[0]?.name || 'No treatment',
               startHour: appointment.time,
               endHour: calculateEndHour(appointment.time, appointment.treatments),
               date: appointment.date,
-              patientName: appointment.patient?.name || 'Unknown',
-              medicName: appointment.medic?.name || 'Unknown',
+              patientUser: appointment.patient?.name || 'Unknown',
+              medicUser: appointment.medic?.name || 'Unknown',
             };
             ws.send(JSON.stringify(response));
           });

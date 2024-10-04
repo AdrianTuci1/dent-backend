@@ -108,6 +108,19 @@ const initializeClinicDatabase = (dbName) => {
     as: 'treatments',
   });
 
+
+    // Ensure AppointmentTreatment belongs to Treatment
+  AppointmentTreatment.belongsTo(Treatment, {
+    foreignKey: 'treatmentId',
+    as: 'treatmentDetails',
+  });
+
+  // Ensure Treatment has many AppointmentTreatments
+  Treatment.hasMany(AppointmentTreatment, {
+    foreignKey: 'treatmentId',
+    as: 'appointmentTreatments',
+  });
+
   // If using DentalHistory model
   Patient.hasMany(DentalHistory, { foreignKey: 'patientId', as: 'dentalHistories' });
   DentalHistory.belongsTo(Patient, { foreignKey: 'patientId', as: 'patient' });

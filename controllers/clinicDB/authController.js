@@ -153,7 +153,6 @@ class AuthenticationController {
         {
           userId: subaccount.id,
           role: subaccount.role,
-          clinicId: subaccount.clinicId,
         },
         process.env.JWT_SECRET || 'hardcoded_secret_key',
         { expiresIn: '1h' }

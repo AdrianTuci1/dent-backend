@@ -14,7 +14,7 @@ const authenticate = (req, res, next) => {
   }
 
   // Debugging: Check if JWT_SECRET is loaded
-  console.log('JWT_SECRET in middleware:', process.env.JWT_SECRET);  // This should log the secret or undefined
+  // console.log('JWT_SECRET in middleware:', process.env.JWT_SECRET);  // This should log the secret or undefined
 
   // Use the environment variable JWT_SECRET or a fallback secret
   const secret = process.env.JWT_SECRET || 'hardcoded_fallback_secret';

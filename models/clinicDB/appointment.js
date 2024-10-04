@@ -29,10 +29,6 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.ENUM('done', 'upcoming', 'missed', 'not-paid'),
       allowNull: false,
     },
-    initialAppointment: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,  // Indicates if this is the initial appointment
-    },
     medicUser: {  // Reference to the ClinicUser acting as the medic
       type: DataTypes.INTEGER,
       allowNull: false,

@@ -2,8 +2,13 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const db = require('./models/mainDB');  // Import Sequelize models
+
 const authRoutes = require('./routes/authRoutes');  // Import routes
 const clinicRoutes = require('./routes/clinicRoutes');
+const treatmentRoutes = require('./routes/treatmentRoutes')
+const componentRoutes = require('./routes/componentRoutes')
+const appointmentRoutes = require('./routes/appointmentRoutes');
+
 const http = require('http');
 const WebSocket = require('ws');
 const setupAppointmentsWebSocket = require('./websockets/appointmentsSockets');
@@ -16,7 +21,7 @@ const app = express();
 
 // Use CORS middleware (apply to all routes by default)
 const corsOptions = {
-  origin: ['http://localhost:3000', 'http://localhost:5173'], // Adjust as needed
+  origin: ['http://localhost:5173'], // Adjust as needed
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],  // Allowed methods
   credentials: true,  // If using cookies or authentication headers
 };
@@ -30,6 +35,9 @@ const server = http.createServer(app);
 // Define routes
 app.use('/api/auth', authRoutes);         // Authentication routes
 app.use('/api/clinic', clinicRoutes);     // Protected clinic routes
+app.use('/api/treatments', treatmentRoutes);
+app.use('/api/components', componentRoutes);
+app.use('/api/appointments', appointmentRoutes);
 
 // Home route for testing
 app.get('/', (req, res) => {
