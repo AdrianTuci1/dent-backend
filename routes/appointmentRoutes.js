@@ -11,7 +11,6 @@ const {
   removeTreatmentFromAppointment
 } = require('../controllers/clinicDB/appointmentTreatmentController');
 const authenticate = require('../middleware/authenticate');  // Main account authentication
-const authenticateSubaccount = require('../middleware/authenticateSubaccount');  // Subaccount authentication
 // const selectClinicDB = require('../middleware/selectClinicDb');
 
 const router = express.Router();
@@ -22,24 +21,24 @@ const router = express.Router();
 // Routes requiring subaccount authentication (e.g., medics access)
 
 // Create a new appointment with initial treatment (subaccount access)
-router.post('/', authenticateSubaccount, createAppointment);
+router.post('/', authenticate, createAppointment);
 
 // Get appointment details (including treatments) (subaccount access)
-router.get('/:appointmentId', authenticateSubaccount, getAppointmentDetails);
+router.get('/:appointmentId', authenticate, getAppointmentDetails);
 
 // Update an appointment (subaccount access)
-router.put('/:appointmentId', authenticateSubaccount, updateAppointment);
+router.put('/:appointmentId', authenticate, updateAppointment);
 
 // Delete an appointment (and its treatments) (subaccount access)
-router.delete('/:appointmentId', authenticateSubaccount, deleteAppointment);
+router.delete('/:appointmentId', authenticate, deleteAppointment);
 
 // Add treatment to an appointment (subaccount access)
-router.post('/:appointmentId/treatments', authenticateSubaccount, addTreatmentToAppointment);
+router.post('/:appointmentId/treatments', authenticate, addTreatmentToAppointment);
 
 // Get all treatments for an appointment (subaccount access)
-router.get('/:appointmentId/treatments', authenticateSubaccount, getAllTreatmentsForAppointment);
+router.get('/:appointmentId/treatments', authenticate, getAllTreatmentsForAppointment);
 
 // Remove treatment from an appointment (subaccount access)
-router.delete('/:appointmentId/treatments/:treatmentId', authenticateSubaccount, removeTreatmentFromAppointment);
+router.delete('/:appointmentId/treatments/:treatmentId', authenticate, removeTreatmentFromAppointment);
 
 module.exports = router;

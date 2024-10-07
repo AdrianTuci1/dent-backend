@@ -1,32 +1,27 @@
 const jwt = require('jsonwebtoken');
 
+// Single unified middleware for all users (clinic, subaccount, patient)
 const authenticate = (req, res, next) => {
-  const authHeader = req.headers['authorization'];  // Get token from Authorization header
-
-  if (!authHeader) {
-    return res.status(403).json({ message: 'No token provided.' });
-  }
-
-  // Ensure token has the Bearer prefix
-  const token = authHeader.split(' ')[1];
-  if (!token) {
-    return res.status(403).json({ message: 'Malformed token.' });
-  }
-
-  // Debugging: Check if JWT_SECRET is loaded
-  // console.log('JWT_SECRET in middleware:', process.env.JWT_SECRET);  // This should log the secret or undefined
-
-  // Use the environment variable JWT_SECRET or a fallback secret
-  const secret = process.env.JWT_SECRET || 'hardcoded_fallback_secret';
+  const authHeader = req.headers['authorization'];
   
-  jwt.verify(token, secret, (err, decoded) => {
+  if (!authHeader) {
+    return res.status(401).json({ message: 'Authorization header missing' });
+  }
+
+  const token = authHeader.split(' ')[1]; // Extract token from "Bearer <token>"
+  
+  if (!token) {
+    return res.status(401).json({ message: 'Token missing' });
+  }
+
+  // Verify the token
+  jwt.verify(token, process.env.JWT_SECRET || 'hardcoded_secret_key', (err, user) => {
     if (err) {
-      console.log('JWT Verification Error:', err);  // Log the exact error
-      return res.status(401).json({ message: 'Failed to authenticate token.' });
+      return res.status(403).json({ message: 'Invalid token' });
     }
 
-    // Attach the decoded user to the request object
-    req.user = decoded;
+    // Attach user information to request object for access in routes
+    req.user = user;
     next();
   });
 };

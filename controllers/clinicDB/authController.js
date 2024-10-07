@@ -62,7 +62,7 @@ class AuthenticationController {
           role: user.role,
         },
         process.env.JWT_SECRET || 'hardcoded_secret_key', // Use a hardcoded secret for testing
-        { expiresIn: '1h' }
+        { expiresIn: '24h' }
       );
   
       // Handle role-specific logic
@@ -155,7 +155,7 @@ class AuthenticationController {
           role: subaccount.role,
         },
         process.env.JWT_SECRET || 'hardcoded_secret_key',
-        { expiresIn: '1h' }
+        { expiresIn: '24h' }
       );
 
       return res.status(200).json({
