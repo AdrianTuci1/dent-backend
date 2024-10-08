@@ -8,6 +8,7 @@ const componentModel = require('./component');
 const appointmentTreatmentModel = require('./appointmentTreatment');
 const treatmentComponentModel = require('./treatmentComponent');
 const dentalHistoryModel = require('./dentalHistory'); // If using
+const categoryModel = require('./category')
 
 const initializeClinicDatabase = (dbName) => {
   const clinicSequelize = new Sequelize(`postgres://admin:admin@postgres:5432/${dbName}`, {
@@ -24,6 +25,7 @@ const initializeClinicDatabase = (dbName) => {
   const AppointmentTreatment = appointmentTreatmentModel(clinicSequelize, Sequelize.DataTypes);
   const TreatmentComponent = treatmentComponentModel(clinicSequelize, Sequelize.DataTypes);
   const DentalHistory = dentalHistoryModel(clinicSequelize, Sequelize.DataTypes); // If using
+  const Category = categoryModel(clinicSequelize, Sequelize.DataTypes)
 
   // Set up associations
 
@@ -151,6 +153,7 @@ const initializeClinicDatabase = (dbName) => {
     AppointmentTreatment,
     TreatmentComponent,
     DentalHistory, // If using
+    Category,
     syncClinicDatabase,
   };
 };

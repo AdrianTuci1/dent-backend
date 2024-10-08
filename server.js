@@ -8,6 +8,7 @@ const clinicRoutes = require('./routes/clinicRoutes');
 const treatmentRoutes = require('./routes/treatmentRoutes')
 const componentRoutes = require('./routes/componentRoutes')
 const appointmentRoutes = require('./routes/appointmentRoutes');
+const categoryRoutes = require('./routes/categoryRoutes')
 
 const http = require('http');
 const WebSocket = require('ws');
@@ -38,6 +39,7 @@ app.use('/api/clinic', clinicRoutes);     // Protected clinic routes
 app.use('/api/treatments', treatmentRoutes);
 app.use('/api/components', componentRoutes);
 app.use('/api/appointments', appointmentRoutes);
+app.use('/api/category', categoryRoutes)
 
 // Home route for testing
 app.get('/', (req, res) => {
