@@ -134,11 +134,9 @@ const seedDemoData = async () => {
         // Create Medic Profile
         const medicProfile = await Medic.create({
           id: medicUser.id,
-          name: 'Dr. Medic',
           employmentType: 'full-time',
-          role: 'Dentist',
+          specialization: 'Orthodontics',
           phone: '555-1234',
-          email: 'medic@demo.dentms.ro',
           address: '456 Dental Rd, Tooth City, USA',
           assignedTreatments: ['Teeth Cleaning', 'Orthodontics'],
           workingDaysHours: {
@@ -148,10 +146,20 @@ const seedDemoData = async () => {
             Thu: '9am-5pm',
             Fri: '9am-5pm',
           },
-          daysOff: ['Saturday', 'Sunday'],
-          permissions: {
-            personalAppointments: true,
-          },
+          daysOff: [
+            {
+              name: "Saturday",
+              startDate: "2024-01-01",
+              endDate: "2024-12-31",
+              repeatYearly: true
+            },
+            {
+              name: "Sunday",
+              startDate: "2024-01-01",
+              endDate: "2024-12-31",
+              repeatYearly: false
+            }
+          ]
         }, { transaction });
         console.log('Medic profile created:', medicProfile.toJSON());
 

@@ -1,5 +1,5 @@
 const express = require('express');
-const { createTreatment, getAllTreatments, updateTreatment, deleteTreatment, getTreatmentById } = require('../controllers/clinicDB/treatmentController');
+const { createTreatment, getAllTreatments, updateTreatment, deleteTreatment, getTreatmentById, getTreatmentsByCategory } = require('../controllers/clinicDB/treatmentController');
 const authenticate = require('../middleware/authenticate'); // JWT Middleware
 
 const router = express.Router();
@@ -9,6 +9,10 @@ router.post('/', authenticate, createTreatment);
 
 // Get all treatments
 router.get('/', authenticate, getAllTreatments);
+
+// Get treatments by Cateogry
+
+router.get('/category', authenticate, getTreatmentsByCategory)
 
 // Get treatment by ID
 router.get('/:treatmentId', authenticate, getTreatmentById)

@@ -9,26 +9,17 @@ module.exports = (sequelize, DataTypes) => {
         key: 'id',
       },
     },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     employmentType: {
       type: DataTypes.ENUM('full-time', 'part-time', 'contract'),
       allowNull: false,
     },
-    role: {
+    specialization: {
       type: DataTypes.STRING, // e.g., 'Dentist', 'Orthodontist'
       allowNull: false,
     },
     phone: {
       type: DataTypes.STRING,
       allowNull: true,
-    },
-    email: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      validate: { isEmail: true },
     },
     address: {
       type: DataTypes.STRING,
@@ -43,12 +34,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
     },
     daysOff: {
-      type: DataTypes.ARRAY(DataTypes.STRING), // e.g., ['Saturday', 'Sunday']
+      type: DataTypes.JSON, // Switch to JSON to store more detailed data
       allowNull: true,
-    },
-    permissions: {
-      type: DataTypes.JSON,
-      allowNull: true,
+      defaultValue: []
     },
   });
 

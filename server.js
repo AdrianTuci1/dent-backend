@@ -5,10 +5,12 @@ const db = require('./models/mainDB');  // Import Sequelize models
 
 const authRoutes = require('./routes/authRoutes');  // Import routes
 const clinicRoutes = require('./routes/clinicRoutes');
-const treatmentRoutes = require('./routes/treatmentRoutes')
-const componentRoutes = require('./routes/componentRoutes')
+const treatmentRoutes = require('./routes/treatmentRoutes');
+const componentRoutes = require('./routes/componentRoutes');
 const appointmentRoutes = require('./routes/appointmentRoutes');
-const categoryRoutes = require('./routes/categoryRoutes')
+const categoryRoutes = require('./routes/categoryRoutes');
+
+const medicRoutes = require('./routes/medicRoutes');
 
 const http = require('http');
 const WebSocket = require('ws');
@@ -39,7 +41,8 @@ app.use('/api/clinic', clinicRoutes);     // Protected clinic routes
 app.use('/api/treatments', treatmentRoutes);
 app.use('/api/components', componentRoutes);
 app.use('/api/appointments', appointmentRoutes);
-app.use('/api/category', categoryRoutes)
+app.use('/api/category', categoryRoutes);
+app.use('/api/medics', medicRoutes)
 
 // Home route for testing
 app.get('/', (req, res) => {
