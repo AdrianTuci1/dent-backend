@@ -64,6 +64,10 @@ const seedDemoData = async () => {
       Treatment,
       Component,
       AppointmentTreatment, // Include AppointmentTreatment
+      Permission,
+      ClinicUserPermission,
+      WorkingDaysHours,
+      DaysOff,
       syncClinicDatabase,
     } = initializeClinicDatabase('demo_db');
 
@@ -88,12 +92,6 @@ const seedDemoData = async () => {
           password: hashedPassword,
           role: 'clinic',
           subaccount_of: null,
-          permissions: {
-            allAppointments: true,
-            statisticsVisible: true,
-            canAddTreatments: true,
-            canEditStocks: true,
-          },
           photo: 'path/to/admin_photo.jpg', // Optional
         }, { transaction });
         console.log('Admin user created:', adminUser.toJSON());
@@ -106,15 +104,26 @@ const seedDemoData = async () => {
           role: 'admin',
           pin: hashedPinAdmin,
           subaccount_of: adminUser.id,
-          permissions: {
-            allAppointments: true,
-            statisticsVisible: true,
-            canAddTreatments: true,
-            canEditStocks: true,
-          },
           photo: 'path/to/admin_sub_photo.jpg', // Optional
         }, { transaction });
         console.log('Admin subaccount created:', adminSubaccount.toJSON());
+
+        // Add permissions to the table
+        const permissionData = [
+          { name: 'allAppointments' },
+          { name: 'editTreatments' },
+          { name: 'editStock' },
+          { name: 'editPermissions' },
+          { name: 'resetOthersPin' },
+          { name: 'addOthersAppointments' },
+          { name: 'viewGraph' },
+          { name: 'editMedics' },
+          { name: 'viewRecords' },
+          { name: 'requestAppointment' }
+        ];
+      
+        const permissions = await Permission.bulkCreate(permissionData, { transaction });
+        console.log('Permissions seeded:', permissions.map(permission => permission.toJSON()));
 
         // Create Medic ClinicUser
         const medicUser = await ClinicUser.create({
@@ -124,12 +133,30 @@ const seedDemoData = async () => {
           role: 'medic',
           pin: hashedPinMedic,
           subaccount_of: adminUser.id,
-          permissions: {
-            personalAppointments: true,
-          },
           photo: 'path/to/medic_photo.jpg', // Optional
         }, { transaction });
         console.log('Medic ClinicUser created:', medicUser.toJSON());
+
+
+        // enable permissions for medic
+        const medicEnabledPermissions = [
+          'allAppointments', 'editTreatments', 'viewGraph', 'addOthersAppointments'
+        ];
+      
+        // Helper to map enabled permissions for a user
+        const createUserPermissions = (userId, enabledPermissions) =>
+          permissions.map(permission => ({
+            userId,
+            permissionId: permission.id,
+            isEnabled: enabledPermissions.includes(permission.name),
+          }));
+
+
+        // Associate permissions for medic user
+        const medicUserPermissions = createUserPermissions(medicUser.id, medicEnabledPermissions);
+        ClinicUserPermission.bulkCreate(medicUserPermissions, { transaction });
+
+        console.log('Permissions associated with ClinicUsers'); 
 
         // Create Medic Profile
         const medicProfile = await Medic.create({
@@ -139,29 +166,55 @@ const seedDemoData = async () => {
           phone: '555-1234',
           address: '456 Dental Rd, Tooth City, USA',
           assignedTreatments: ['Teeth Cleaning', 'Orthodontics'],
-          workingDaysHours: {
-            Mon: '9am-5pm',
-            Tue: '9am-5pm',
-            Wed: '9am-5pm',
-            Thu: '9am-5pm',
-            Fri: '9am-5pm',
-          },
-          daysOff: [
-            {
-              name: "Saturday",
-              startDate: "2024-01-01",
-              endDate: "2024-12-31",
-              repeatYearly: true
-            },
-            {
-              name: "Sunday",
-              startDate: "2024-01-01",
-              endDate: "2024-12-31",
-              repeatYearly: false
-            }
-          ]
         }, { transaction });
+
         console.log('Medic profile created:', medicProfile.toJSON());
+
+        // Seed WorkingDaysHours
+        const workingDaysHoursData = [
+          { medicId: medicProfile.id, day: 'Mon', startTime: '09:00', endTime: '17:00' },
+          { medicId: medicProfile.id, day: 'Tue', startTime: '09:00', endTime: '17:00' },
+          { medicId: medicProfile.id, day: 'Wed', startTime: '09:00', endTime: '17:00' },
+          { medicId: medicProfile.id, day: 'Thu', startTime: '09:00', endTime: '17:00' },
+          { medicId: medicProfile.id, day: 'Fri', startTime: '09:00', endTime: '17:00' },
+        ];
+
+        // Create entries in WorkingDaysHours table
+        await Promise.all(
+          workingDaysHoursData.map(async (dayData) => {
+            await WorkingDaysHours.create(dayData, { transaction });
+          })
+        );
+
+        console.log('Working days and hours created for medic:', workingDaysHoursData);
+
+        // Seed DaysOff
+        const daysOffData = [
+          {
+            medicId: medicProfile.id,
+            name: 'Bali escape',
+            startDate: '2025-04-01',
+            endDate: '2025-04-10',
+            repeatYearly: true,
+          },
+          {
+            medicId: medicProfile.id,
+            name: 'Sunday',
+            startDate: '2024-01-01',
+            endDate: '2024-12-31',
+            repeatYearly: false,
+          },
+        ];
+
+        // Create entries in DaysOff table
+        await Promise.all(
+          daysOffData.map(async (dayOff) => {
+            await DaysOff.create(dayOff, { transaction });
+          })
+        );
+
+        console.log('Days off created for medic:', daysOffData);
+
 
         // Create Patient ClinicUser
         const patientUser = await ClinicUser.create({
@@ -169,9 +222,6 @@ const seedDemoData = async () => {
           name: 'John Doe',
           password: hashedPassword,
           role: 'patient',
-          permissions: {
-            viewRecords: true,
-          },
           photo: 'path/to/patient_photo.jpg', // Optional
         }, { transaction });
         console.log('Patient ClinicUser created:', patientUser.toJSON());

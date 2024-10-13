@@ -11,6 +11,9 @@ const appointmentRoutes = require('./routes/appointmentRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 
 const medicRoutes = require('./routes/medicRoutes');
+const permissionRoutes = require('./routes/permissionRoutes');
+const workingDayHoursRoutes = require('./routes/workingDaysHoursRoutes');
+const daysOffRoutes = require('./routes/daysOffRoutes');
 
 const http = require('http');
 const WebSocket = require('ws');
@@ -42,7 +45,11 @@ app.use('/api/treatments', treatmentRoutes);
 app.use('/api/components', componentRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/category', categoryRoutes);
-app.use('/api/medics', medicRoutes)
+
+app.use('/api/medics', medicRoutes);
+app.use('/api/permissions', permissionRoutes);
+app.use('/api/working-days-hours', workingDayHoursRoutes)
+app.use('/api/days-off', daysOffRoutes)
 
 // Home route for testing
 app.get('/', (req, res) => {

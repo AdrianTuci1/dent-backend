@@ -29,15 +29,6 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.ARRAY(DataTypes.STRING), // List of Treatment IDs or names
       allowNull: true,
     },
-    workingDaysHours: {
-      type: DataTypes.JSON, // e.g., { Mon: '9am-5pm', Tue: '9am-5pm' }
-      allowNull: true,
-    },
-    daysOff: {
-      type: DataTypes.JSON, // Switch to JSON to store more detailed data
-      allowNull: true,
-      defaultValue: []
-    },
   });
 
   return Medic;

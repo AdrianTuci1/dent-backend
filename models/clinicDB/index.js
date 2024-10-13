@@ -9,6 +9,10 @@ const appointmentTreatmentModel = require('./appointmentTreatment');
 const treatmentComponentModel = require('./treatmentComponent');
 const dentalHistoryModel = require('./dentalHistory'); // If using
 const categoryModel = require('./category')
+const permissionModel = require('./permission');
+const clinicUserPermissionModel = require('./clinicUserPermission');
+const workingDaysHoursModel = require('./workingDaysHours')
+const daysOffModel = require('./daysOff')
 
 const initializeClinicDatabase = (dbName) => {
   const clinicSequelize = new Sequelize(`postgres://admin:admin@postgres:5432/${dbName}`, {
@@ -25,7 +29,11 @@ const initializeClinicDatabase = (dbName) => {
   const AppointmentTreatment = appointmentTreatmentModel(clinicSequelize, Sequelize.DataTypes);
   const TreatmentComponent = treatmentComponentModel(clinicSequelize, Sequelize.DataTypes);
   const DentalHistory = dentalHistoryModel(clinicSequelize, Sequelize.DataTypes); // If using
-  const Category = categoryModel(clinicSequelize, Sequelize.DataTypes)
+  const Category = categoryModel(clinicSequelize, Sequelize.DataTypes);
+  const Permission = permissionModel(clinicSequelize, Sequelize.DataTypes);
+  const ClinicUserPermission = clinicUserPermissionModel(clinicSequelize, Sequelize.DataTypes);
+  const WorkingDaysHours = workingDaysHoursModel(clinicSequelize, Sequelize.DataTypes);
+  const DaysOff = daysOffModel(clinicSequelize, Sequelize.DataTypes);
 
   // Set up associations
 
@@ -81,6 +89,52 @@ const initializeClinicDatabase = (dbName) => {
     foreignKey: 'patientUser',
     as: 'patient',
   });
+
+
+    // permission relation
+  ClinicUser.belongsToMany(Permission, {
+    through: ClinicUserPermission,
+    foreignKey: 'userId',
+    otherKey: 'permissionId',
+    as: 'permissions',
+  });
+  Permission.belongsToMany(ClinicUser, {
+    through: ClinicUserPermission,
+    foreignKey: 'permissionId',
+    otherKey: 'userId',
+    as: 'users',
+  });
+
+    // ClinicUserPermission associations
+  ClinicUserPermission.belongsTo(ClinicUser, {
+    foreignKey: 'userId',
+    as: 'user',
+  });
+  ClinicUserPermission.belongsTo(Permission, {
+    foreignKey: 'permissionId',
+    as: 'permission',
+  });
+
+
+  // Medic associations with WorkingDaysHours and DaysOff
+    Medic.hasMany(WorkingDaysHours, {
+      foreignKey: 'medicId',
+      as: 'workingDaysHours'
+    });
+    WorkingDaysHours.belongsTo(Medic, {
+      foreignKey: 'medicId',
+      as: 'medic'
+    });
+
+    Medic.hasMany(DaysOff, {
+      foreignKey: 'medicId',
+      as: 'daysOff'
+    });
+    DaysOff.belongsTo(Medic, {
+      foreignKey: 'medicId',
+      as: 'medic'
+    });
+
 
   // Many-to-many between Appointment and Treatment via AppointmentTreatment
   Appointment.belongsToMany(Treatment, {
@@ -154,6 +208,10 @@ const initializeClinicDatabase = (dbName) => {
     TreatmentComponent,
     DentalHistory, // If using
     Category,
+    Permission,
+    ClinicUserPermission,
+    WorkingDaysHours,
+    DaysOff,
     syncClinicDatabase,
   };
 };

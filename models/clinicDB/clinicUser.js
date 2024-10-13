@@ -36,10 +36,6 @@ module.exports = (sequelize, DataTypes) => {
         key: 'id',
       },
     },
-    permissions: {
-      type: DataTypes.JSON,
-      allowNull: true,
-    },
     photo: {
       type: DataTypes.STRING,
       allowNull: true,
