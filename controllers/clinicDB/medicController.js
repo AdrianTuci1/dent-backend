@@ -15,125 +15,334 @@ const getClinicDatabase = async (clinicDbName) => {
   return clinicDB;
 };
 
+
 // Create Medic
 exports.createMedic = async (req, res) => {
-  const { email, name, employmentType, specialization, phone, address, assignedTreatments, workingDaysHours, daysOff, pin = '0000' } = req.body;
+  const {
+    email,
+    name,
+    employmentType,
+    specialization,
+    phone,
+    address,
+    assignedTreatments,
+    workingDaysHours,
+    daysOff,
+    permissions,
+  } = req.body;
   const password = generateRandomString();
+  const pin = generateRandomString(4); // Assuming PIN is 4 characters long
   const clinicDbName = req.headers['x-clinic-db'];
 
-  const transaction = await sequelize.transaction();
   try {
-    const { ClinicUser, Medic, sequelize } = await getClinicDatabase(clinicDbName);
-    
-    const newUser = await ClinicUser.create({
+    const db = await getClinicDatabase(clinicDbName);
+
+    const newUser = await db.ClinicUser.create({
       email,
       name,
       password,
       role: 'medic',
       pin,
       subaccount_of: req.userId,
-      permissions: null,
       photo: null,
-    }, { transaction });
+    });
 
-    const newMedic = await Medic.create({
+    const newMedic = await db.Medic.create({
       id: newUser.id,
       employmentType,
       specialization,
       phone,
       address,
       assignedTreatments,
-      workingDaysHours,
-      daysOff,
-    }, { transaction });
+    });
 
-    await transaction.commit();
-    res.status(201).json({ newUser, newMedic });
+    await Promise.all(
+      workingDaysHours.map(async (day) => {
+        await db.WorkingDaysHours.create({
+          medicId: newMedic.id,
+          day: day.day,
+          startTime: day.startTime,
+          endTime: day.endTime,
+        });
+      })
+    );
+
+    await Promise.all(
+      daysOff.map(async (dayOff) => {
+        await db.DaysOff.create({
+          medicId: newMedic.id,
+          name: dayOff.name,
+          startDate: dayOff.startDate,
+          endDate: dayOff.endDate,
+          repeatYearly: dayOff.repeatYearly,
+        });
+      })
+    );
+
+    const permissionsToInsert = permissions.map((permission) => ({
+      userId: newUser.id,
+      permissionId: permission.id,
+      isEnabled: permission.isEnabled,
+    }));
+
+    await db.ClinicUserPermission.bulkCreate(permissionsToInsert);
+
+    res.status(201).json({ message: 'Medic created successfully', newUser, newMedic });
   } catch (error) {
-    await transaction.rollback();
-    res.status(500).json({ error: 'Failed to create medic.' });
+    console.error('Error creating medic:', error);
+    res.status(500).json({ error: 'Failed to create medic' });
   }
 };
+
 
 // View Medic
 exports.viewMedic = async (req, res) => {
   const clinicDbName = req.headers['x-clinic-db'];
   
   try {
-    const { ClinicUser, Medic } = await getClinicDatabase(clinicDbName);
+    const db = await getClinicDatabase(clinicDbName);
 
-    const medic = await ClinicUser.findOne({
+    const medic = await db.ClinicUser.findOne({
       where: { id: req.params.id },
-      include: [{ model: Medic, as: 'medicProfile' }],
+      attributes: { exclude: ['password', 'pin', 'createdAt', 'updatedAt'] }, // Exclude fields for ClinicUser
+      include: [
+        {
+          model: db.Medic,
+          as: 'medicProfile',
+          attributes: { exclude: ['createdAt', 'updatedAt'] }, // Exclude fields for Medic
+          include: [
+            {
+              model: db.WorkingDaysHours,
+              as: 'workingDaysHours',
+              attributes: { exclude: ['createdAt', 'updatedAt'] }, // Exclude fields for WorkingDaysHours
+            },
+            {
+              model: db.DaysOff,
+              as: 'daysOff',
+              attributes: { exclude: ['createdAt', 'updatedAt'] }, // Exclude fields for DaysOff
+            },
+          ],
+        },
+        {
+          model: db.Permission,
+          as: 'permissions',
+          attributes: ['id', 'name'], // Only include id and name
+          through: {
+            model: db.ClinicUserPermission,
+            attributes: [], // Exclude join table attributes
+          },
+        },
+      ],
     });
 
     if (!medic) {
       return res.status(404).json({ error: 'Medic not found.' });
     }
 
-    res.status(200).json(medic);
+    // Map the permissions to include isEnabled directly, checking if ClinicUserPermission is present
+    const formattedPermissions = medic.permissions.map((permission) => ({
+      id: permission.id,
+      name: permission.name,
+      isEnabled: permission.ClinicUserPermission ? permission.ClinicUserPermission.isEnabled : false, // Default to false if undefined
+    }));
+
+    // Structure the response to include permissions with isEnabled directly
+    const formattedMedic = {
+      ...medic.toJSON(),
+      permissions: formattedPermissions,
+    };
+
+    res.status(200).json(formattedMedic);
   } catch (error) {
+    console.error('Error fetching medic:', error);  // Log the error details for debugging
     res.status(500).json({ error: 'Failed to retrieve medic details.' });
   }
 };
 
+
+
 // Update Medic
 exports.updateMedic = async (req, res) => {
-  const { email, name, employmentType, specialization, phone, address, assignedTreatments, workingDaysHours, daysOff, pin } = req.body;
+  const {
+    email,
+    name,
+    employmentType,
+    specialization,
+    phone,
+    address,
+    assignedTreatments,
+    workingDaysHours,
+    daysOff,
+    permissions,
+  } = req.body;
   const clinicDbName = req.headers['x-clinic-db'];
-  
+
   try {
-    const { ClinicUser, Medic, sequelize } = await getClinicDatabase(clinicDbName);
-    const transaction = await sequelize.transaction();
+    const db = await getClinicDatabase(clinicDbName);
 
-    await ClinicUser.update({ email, name, pin }, {
-      where: { id: req.params.id },
-      transaction,
+    await db.ClinicUser.update(
+      { email, name },
+      {
+        where: { id: req.params.id },
+      }
+    );
+
+    await db.Medic.update(
+      {
+        employmentType,
+        specialization,
+        phone,
+        address,
+        assignedTreatments,
+      },
+      {
+        where: { id: req.params.id },
+      }
+    );
+
+    // Update Working Days Hours
+    await db.WorkingDaysHours.destroy({
+      where: { medicId: req.params.id },
     });
 
-    await Medic.update({
-      employmentType,
-      specialization,
-      phone,
-      address,
-      assignedTreatments,
-      workingDaysHours,
-      daysOff,
-    }, {
-      where: { id: req.params.id },
-      transaction,
+    await Promise.all(
+      workingDaysHours.map(async (day) => {
+        await db.WorkingDaysHours.create({
+          medicId: req.params.id,
+          day: day.day,
+          startTime: day.startTime,
+          endTime: day.endTime,
+        });
+      })
+    );
+
+    // Update Days Off
+    await db.DaysOff.destroy({
+      where: { medicId: req.params.id },
     });
 
-    await transaction.commit();
-    res.status(200).json({ message: 'Medic updated successfully.' });
+    await Promise.all(
+      daysOff.map(async (dayOff) => {
+        await db.DaysOff.create({
+          medicId: req.params.id,
+          name: dayOff.name,
+          startDate: dayOff.startDate,
+          endDate: dayOff.endDate,
+          repeatYearly: dayOff.repeatYearly,
+        });
+      })
+    );
+
+    // Update Permissions
+    await db.ClinicUserPermission.destroy({
+      where: { userId: req.params.id },
+    });
+
+    const permissionsToInsert = permissions.map((permission) => ({
+      userId: req.params.id,
+      permissionId: permission.id,
+      isEnabled: permission.isEnabled,
+    }));
+
+    await db.ClinicUserPermission.bulkCreate(permissionsToInsert);
+
+    res.status(200).json({ message: 'Medic updated successfully' });
   } catch (error) {
-    await transaction.rollback();
-    res.status(500).json({ error: 'Failed to update medic.' });
+    console.error('Error updating medic:', error);
+    res.status(500).json({ error: 'Failed to update medic' });
   }
 };
+
 
 // Delete Medic
 exports.deleteMedic = async (req, res) => {
   const clinicDbName = req.headers['x-clinic-db'];
-  
+
   try {
-    const { ClinicUser, Medic, sequelize } = await getClinicDatabase(clinicDbName);
-    const transaction = await sequelize.transaction();
+    const db = await getClinicDatabase(clinicDbName);
 
-    await Medic.destroy({
-      where: { id: req.params.id },
-      transaction,
+    // Delete associated data first
+    await db.WorkingDaysHours.destroy({
+      where: { medicId: req.params.id },
     });
 
-    await ClinicUser.destroy({
-      where: { id: req.params.id },
-      transaction,
+    await db.DaysOff.destroy({
+      where: { medicId: req.params.id },
     });
 
-    await transaction.commit();
-    res.status(200).json({ message: 'Medic deleted successfully.' });
+    await db.ClinicUserPermission.destroy({
+      where: { userId: req.params.id },
+    });
+
+    // Delete Medic and ClinicUser entries
+    await db.Medic.destroy({
+      where: { id: req.params.id },
+    });
+
+    await db.ClinicUser.destroy({
+      where: { id: req.params.id },
+    });
+
+    res.status(200).json({ message: 'Medic deleted successfully' });
   } catch (error) {
-    await transaction.rollback();
-    res.status(500).json({ error: 'Failed to delete medic.' });
+    console.error('Error deleting medic:', error);
+    res.status(500).json({ error: 'Failed to delete medic' });
+  }
+};
+
+
+
+
+exports.getAllMedicsForTable = async (req, res) => {
+  const clinicDbName = req.headers['x-clinic-db'];
+
+  try {
+    const db = await getClinicDatabase(clinicDbName);
+
+    const medics = await db.ClinicUser.findAll({
+      where: { role: 'medic' },
+      attributes: ['id', 'name', 'email'],
+      include: [
+        {
+          model: db.Medic,
+          as: 'medicProfile',
+          attributes: ['specialization', 'phone', 'employmentType'],
+          include: [
+            {
+              model: db.WorkingDaysHours,
+              as: 'workingDaysHours',
+              attributes: ['day'],
+            },
+          ],
+        },
+      ],
+    });
+
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    const formattedMedics = medics.map((medic) => {
+      const activeDays = new Set(
+        medic.medicProfile?.workingDaysHours.map((dayObj) => dayObj.day) || []
+      );
+
+      const formattedWorkingDays = daysOfWeek.map((day) =>
+        activeDays.has(day) ? day.charAt(0) : ''
+      );
+
+      return {
+        id: medic.id,
+        name: medic.name,
+        email: medic.email,
+        specialization: medic.medicProfile?.specialization,
+        phone: medic.medicProfile?.phone,
+        employmentType: medic.medicProfile?.employmentType,
+        workingDays: formattedWorkingDays,
+      };
+    });
+
+    res.status(200).json(formattedMedics);
+  } catch (error) {
+    console.error('Error fetching medics:', error);
+    res.status(500).json({ error: 'Failed to retrieve medics' });
   }
 };
