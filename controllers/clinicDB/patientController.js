@@ -15,7 +15,7 @@ const getClinicDatabase = async (clinicDbName) => {
 };
 
 
-exports.getPatients = async (req, res) => {
+const getPatients = async (req, res) => {
     try {
       const clinicDb = req.headers['x-clinic-db'];
       const db = await getClinicDatabase(clinicDb);
@@ -116,6 +116,142 @@ exports.getPatients = async (req, res) => {
     }
   };
 
+
+
+    // Create a new patient
+  const createPatient = async (req, res) => {
+    try {
+      const clinicDb = req.headers['x-clinic-db'];
+      const db = await getClinicDatabase(clinicDb);
+      
+      const { ClinicUser, Patient } = db;
+
+      const { email, name, password, age, gender, phone, address, labels, notes } = req.body;
+
+      // Create ClinicUser
+      const newUser = await ClinicUser.create({
+        email,
+        name,
+        password,
+        role: 'patient', // Role set as patient
+        photo: 'path/to/patient_photo.jpg',
+      });
+
+      // Create Patient Profile and associate with ClinicUser
+      const newPatient = await Patient.create({
+        id: newUser.id,
+        age,
+        gender,
+        phone,
+        email,
+        address,
+        labels,
+        notes,
+        dentalHistory: {},
+        files: [],
+        paymentsMade: [],
+      });
+
+      res.status(201).json({ message: 'Patient created successfully', patient: newPatient });
+    } catch (error) {
+      console.error('Error creating patient:', error);
+      res.status(500).json({ message: 'Error creating patient', error: error.message });
+    }
+  };
+
+  // Get patient by ID
+  const getPatientById = async (req, res) => {
+    const clinicDb = req.headers['x-clinic-db'];
+    const { id } = req.params;
+
+    try {
+      const db = await getClinicDatabase(clinicDb);
+      const { ClinicUser, Patient } = db;
+
+      const patient = await ClinicUser.findByPk(id, {
+        include: {
+          model: Patient,
+          as: 'patientProfile', // Adjust if necessary
+        },
+      });
+
+      if (!patient) {
+        return res.status(404).json({ message: 'Patient not found' });
+      }
+
+      res.status(200).json(patient);
+    } catch (error) {
+      console.error('Error retrieving patient:', error);
+      res.status(500).json({ message: 'Error retrieving patient', error: error.message });
+    }
+  };
+
+  // Update patient details
+  const updatePatient = async (req, res) => {
+    const clinicDb = req.headers['x-clinic-db'];
+    const { id } = req.params;
+    const { name, age, gender, phone, address, labels, notes } = req.body;
+
+    try {
+      const db = await getClinicDatabase(clinicDb);
+      const { ClinicUser, Patient } = db;
+
+      const patientUser = await ClinicUser.findByPk(id);
+
+      if (!patientUser) {
+        return res.status(404).json({ message: 'Patient not found' });
+      }
+
+      // Update the ClinicUser fields if needed
+      await patientUser.update({ name });
+
+      // Update the associated Patient model
+      const updatedPatient = await Patient.update(
+        { age, gender, phone, address, labels, notes },
+        { where: { id } }
+      );
+
+      res.status(200).json({ message: 'Patient updated successfully', patient: updatedPatient });
+    } catch (error) {
+      console.error('Error updating patient:', error);
+      res.status(500).json({ message: 'Error updating patient', error: error.message });
+    }
+  };
+
+  // Delete a patient by ID
+  const deletePatient = async (req, res) => {
+    const clinicDb = req.headers['x-clinic-db'];
+    const { id } = req.params;
+
+    try {
+      const db = await getClinicDatabase(clinicDb);
+      const { ClinicUser, Patient } = db;
+
+      const patientUser = await ClinicUser.findByPk(id);
+
+      if (!patientUser) {
+        return res.status(404).json({ message: 'Patient not found' });
+      }
+
+      // Delete the associated Patient profile
+      await Patient.destroy({ where: { id } });
+      // Delete the ClinicUser record
+      await ClinicUser.destroy({ where: { id } });
+
+      res.status(200).json({ message: 'Patient deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting patient:', error);
+      res.status(500).json({ message: 'Error deleting patient', error: error.message });
+    }
+  };
+
+  module.exports = {
+    getPatients,
+    createPatient,
+    getPatientById,
+    updatePatient,
+    deletePatient,
+  };
 
 
   

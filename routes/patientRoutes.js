@@ -1,9 +1,21 @@
 const express = require('express');
-const { getPatients } = require('../controllers/clinicDB/patientController')
+const { getPatients, createPatient, getPatientById, updatePatient, deletePatient } = require('../controllers/clinicDB/patientController')
 
 const router = express.Router();
 
 router.get('/', getPatients);
+
+// Route to create a new patient
+router.post('/', createPatient);
+
+// Route to get a patient by ID
+router.get('/:id', getPatientById);
+
+// Route to update patient details by ID
+router.put('/:id', updatePatient);
+
+// Route to delete a patient by ID
+router.delete('/:id', deletePatient);
 
 
 module.exports = router;
