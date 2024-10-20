@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 const initializeClinicDatabase = require('../../models/clinicDB');  // Import your initialize function
 
 // Cache the initialized connections to avoid re-initializing for every request
@@ -229,3 +230,222 @@ exports.deleteAppointment = async (req, res) => {
     res.status(500).json({ message: 'Error deleting appointment', error });
   }
 };
+
+
+
+// Get Recent Appointments for a Patient (With Pagination)
+exports.getPatientAppointments = async (req, res) => {
+  const { patientId } = req.params; // Get patientId from params
+  const { limit = 20, offset = 0 } = req.query; // Limit and offset for pagination
+  const clinicDbName = req.headers['x-clinic-db']; // Get clinic database from headers
+
+  if (!clinicDbName) {
+    return res.status(400).json({ message: 'Missing clinic database name.' });
+  }
+
+  try {
+    const db = await getClinicDatabase(clinicDbName);
+
+    // Fetch the most recent appointments for the patient, limited to the given number
+    const appointments = await db.Appointment.findAll({
+      where: { patientUser: patientId },
+      order: [['date', 'DESC']], // Order by date, most recent first
+      limit: parseInt(limit), // Limit the number of results
+      offset: parseInt(offset), // Skip the first 'offset' results (for pagination)
+      include: [
+        {
+          model: db.ClinicUser,
+          as: 'medic', // Include medic details
+          attributes: ['id', 'name'],
+        },
+        {
+          model: db.AppointmentTreatment, // Include AppointmentTreatment model
+          as: 'AppointmentTreatments', // Use the correct alias for AppointmentTreatment
+          include: [
+            {
+              model: db.Treatment, // Include Treatment model
+              as: 'treatmentDetails', // Ensure the correct alias for Treatment is used
+              attributes: ['name'], // Include the treatment name
+            },
+          ],
+          order: [['createdAt', 'ASC']], // Fetch treatments in chronological order
+          limit: 1, // Only include the first (initial) treatment
+        },
+      ],
+    });
+
+    if (appointments.length === 0) {
+      return res.status(404).json({ message: 'No appointments found for this patient.' });
+    }
+
+    // Format the response
+    const formattedAppointments = appointments.map((appointment) => {
+      const initialTreatment = appointment.AppointmentTreatments[0]?.treatmentDetails?.name || null; // Get only the first treatment
+
+      return {
+        appointmentId: appointment.appointmentId,
+        date: appointment.date,
+        time: appointment.time,
+        medicUser: {
+          id: appointment.medic.id,
+          name: appointment.medic.name,
+        },
+        initialTreatment, // Return only the initial treatment
+      };
+    });
+
+    res.status(200).json({
+      appointments: formattedAppointments,
+      totalAppointments: formattedAppointments.length,
+      message: 'Appointments fetched successfully',
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching appointments', error: error.message });
+  }
+};
+
+
+        // Helper function to get today's date range (start and end)
+        const getTodayRange = () => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); // Start of today
+          const tomorrow = new Date(today);
+          tomorrow.setDate(today.getDate() + 1); // Start of tomorrow
+          return { today, tomorrow };
+        };
+
+
+
+
+// Controller to get appointments for both today and the next 20 upcoming appointments (excluding today)
+exports.getMedicAppointments = async (req, res) => {
+  const { medicId } = req.params; // medicId can be optional
+  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
+
+  if (!clinicDbName) {
+    return res.status(400).json({ message: 'Missing clinic database name.' });
+  }
+
+  try {
+    const db = await getClinicDatabase(clinicDbName);
+    const { today, tomorrow } = getTodayRange();  // Get today's start and end times
+
+    // Define the conditions for today and upcoming appointments
+    const whereConditionToday = {
+      date: {
+        [Op.gte]: today,
+        [Op.lt]: tomorrow,
+      },
+    };
+
+    const whereConditionUpcoming = {
+      date: {
+        [Op.gt]: today,
+      },
+    };
+
+    // If medicId is provided, restrict the query to that medic's appointments
+    if (medicId) {
+      whereConditionToday.medicUser = medicId;
+      whereConditionUpcoming.medicUser = medicId;
+    }
+
+    // Fetch today's appointments (from all medics or specific medic if medicId is provided)
+    const todaysAppointments = await db.Appointment.findAll({
+      where: whereConditionToday,
+      include: [
+        {
+          model: db.ClinicUser,
+          as: 'medic', // Include medic details
+          attributes: ['id', 'name'],
+        },
+        {
+          model: db.ClinicUser,
+          as: 'patient', // Include patient details
+          attributes: ['id', 'name'],
+        },
+        {
+          model: db.AppointmentTreatment,
+          as: 'AppointmentTreatments', // Use alias for AppointmentTreatment
+          include: {
+            model: db.Treatment,
+            as: 'treatmentDetails', // Fetch treatment details
+            attributes: ['name'],
+          },
+        },
+      ],
+      order: [['time', 'ASC']], // Sort by time
+    });
+
+    // Fetch the next 20 upcoming appointments (from all medics or specific medic if medicId is provided)
+    const upcomingAppointments = await db.Appointment.findAll({
+      where: whereConditionUpcoming,
+      include: [
+        {
+          model: db.ClinicUser,
+          as: 'medic', // Include medic details
+          attributes: ['id', 'name'],
+        },
+        {
+          model: db.ClinicUser,
+          as: 'patient', // Include patient details
+          attributes: ['id', 'name'],
+        },
+        {
+          model: db.AppointmentTreatment,
+          as: 'AppointmentTreatments', // Use alias for AppointmentTreatment
+          include: {
+            model: db.Treatment,
+            as: 'treatmentDetails', // Fetch treatment details
+            attributes: ['name'],
+          },
+        },
+      ],
+      limit: 20, // Limit to the next 20 appointments
+      order: [['date', 'ASC'], ['time', 'ASC']], // Sort by date, then by time
+    });
+
+    // Format today's appointments
+    const formattedTodaysAppointments = todaysAppointments.map((appointment) => ({
+      appointmentId: appointment.appointmentId,
+      date: appointment.date,
+      time: appointment.time,
+      patientUser: {
+        id: appointment.patient.id,
+        name: appointment.patient.name,
+      },
+      medicUser: {
+        id: appointment.medic.id,
+        name: appointment.medic.name,
+      },
+      initialTreatment: appointment.AppointmentTreatments[0]?.treatmentDetails?.name || null, // Get the initial treatment
+    }));
+
+    // Format upcoming appointments
+    const formattedUpcomingAppointments = upcomingAppointments.map((appointment) => ({
+      appointmentId: appointment.appointmentId,
+      date: appointment.date,
+      time: appointment.time,
+      patientUser: {
+        id: appointment.patient.id,
+        name: appointment.patient.name,
+      },
+      medicUser: {
+        id: appointment.medic.id,
+        name: appointment.medic.name,
+      },
+      initialTreatment: appointment.AppointmentTreatments[0]?.treatmentDetails?.name || null, // Get the initial treatment
+    }));
+
+    res.status(200).json({
+      today: formattedTodaysAppointments,
+      upcoming: formattedUpcomingAppointments,
+      message: 'Appointments fetched successfully',
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching medic appointments', error: error.message });
+  }
+};
+
+
+

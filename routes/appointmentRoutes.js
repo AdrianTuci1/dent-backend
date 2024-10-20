@@ -3,7 +3,9 @@ const {
   createAppointment,
   getAppointmentDetails,
   updateAppointment,
-  deleteAppointment
+  deleteAppointment,
+  getPatientAppointments,
+  getMedicAppointments
 } = require('../controllers/clinicDB/appointmentController');
 const {
   addTreatmentToAppointment,
@@ -40,5 +42,11 @@ router.get('/:appointmentId/treatments', authenticate, getAllTreatmentsForAppoin
 
 // Remove treatment from an appointment (subaccount access)
 router.delete('/:appointmentId/treatments/:treatmentId', authenticate, removeTreatmentFromAppointment);
+
+// Get recent appointments for a patient (with pagination and limit)
+router.get('/patient/:patientId', getPatientAppointments);
+
+// Get today's or this week's appointments for a medic (with 'today' or 'week' filter)
+router.get('/medic/:medicId?', authenticate, getMedicAppointments);
 
 module.exports = router;

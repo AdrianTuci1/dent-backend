@@ -7,7 +7,7 @@ const createAppointments = async (models, patientUser, medicUser, treatments, tr
   const appointmentsData = [
     {
       appointmentId: 'AP0001',
-      date: '2024-10-13',
+      date: '2024-10-19',
       time: '10:00',
       isDone: false,
       status: 'upcoming',
@@ -18,7 +18,7 @@ const createAppointments = async (models, patientUser, medicUser, treatments, tr
     },
     {
       appointmentId: 'AP0002',
-      date: '2024-10-14',
+      date: '2024-10-20',
       time: '11:30',
       isDone: false,
       status: 'upcoming',
@@ -29,7 +29,7 @@ const createAppointments = async (models, patientUser, medicUser, treatments, tr
     },
     {
       appointmentId: 'AP0003',
-      date: '2024-10-15',
+      date: '2024-10-21',
       time: '09:00',
       isDone: false,
       status: 'upcoming',
@@ -40,7 +40,7 @@ const createAppointments = async (models, patientUser, medicUser, treatments, tr
     },
     {
       appointmentId: 'AP0004',
-      date: '2024-10-16',
+      date: '2024-10-21',
       time: '14:00',
       isDone: false,
       status: 'upcoming',
@@ -51,7 +51,7 @@ const createAppointments = async (models, patientUser, medicUser, treatments, tr
     },
     {
       appointmentId: 'AP0005',
-      date: '2024-10-17',
+      date: '2024-10-22',
       time: '15:00',
       isDone: false,
       status: 'upcoming',

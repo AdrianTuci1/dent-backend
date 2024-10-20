@@ -150,6 +150,17 @@ const initializeClinicDatabase = (dbName) => {
     as: 'appointments',
   });
 
+    // If you want to directly associate Appointment with AppointmentTreatment
+  Appointment.hasMany(AppointmentTreatment, {
+    foreignKey: 'appointmentId',
+    as: 'AppointmentTreatments',
+  });
+
+  AppointmentTreatment.belongsTo(Appointment, {
+    foreignKey: 'appointmentId',
+    as: 'appointment',
+  });
+
   // Many-to-many between Treatment and Component via TreatmentComponent
   Treatment.belongsToMany(Component, {
     through: TreatmentComponent,
