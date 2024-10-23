@@ -29,7 +29,13 @@ module.exports = (sequelize) => {
     password: {
       type: DataTypes.STRING,
       allowNull: false,
-    }
+    },
+        // Add timezone field
+        timezone: {
+          type: DataTypes.STRING,
+          allowNull: false, // Set it to false if you want it to be mandatory
+          defaultValue: 'Europe/Bucharest', // Optional: Set a default timezone
+        },
   }, {
     tableName: 'clinics',  // Explicitly set lowercase table name
   }

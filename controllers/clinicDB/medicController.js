@@ -19,80 +19,102 @@ const getClinicDatabase = async (clinicDbName) => {
 // Create Medic
 exports.createMedic = async (req, res) => {
   const {
-    email,
-    name,
-    employmentType,
-    specialization,
-    phone,
-    address,
-    assignedTreatments,
-    workingDaysHours,
-    daysOff,
-    permissions,
-  } = req.body;
-  const password = generateRandomString();
-  const pin = generateRandomString(4); // Assuming PIN is 4 characters long
-  const clinicDbName = req.headers['x-clinic-db'];
-
-  try {
-    const db = await getClinicDatabase(clinicDbName);
-
-    const newUser = await db.ClinicUser.create({
-      email,
+    info: {
       name,
-      password,
-      role: 'medic',
-      pin,
-      subaccount_of: req.userId,
-      photo: null,
-    });
-
-    const newMedic = await db.Medic.create({
-      id: newUser.id,
+      email,
       employmentType,
       specialization,
       phone,
       address,
-      assignedTreatments,
+      photo, // If a photo is provided
+    },
+    assignedServices: { assignedTreatments },
+    workingHours, // Object with day names as keys and time ranges (e.g., "08:00-16:00") as values
+    daysOff, // Array of days off
+    permissions, // Array of permissions
+  } = req.body;
+  
+  const password = generateRandomString();
+  const pin = generateRandomString(4); // Assuming PIN is 4 characters long
+  const clinicDbName = req.headers['x-clinic-db']; // Clinic-specific DB
+
+  try {
+    const db = await getClinicDatabase(clinicDbName);
+
+    // 1. Create a new ClinicUser
+    const newUser = await db.ClinicUser.create({
+      email,
+      name,
+      password,
+      role: 'medic', // Set the role as 'medic'
+      pin,
+      subaccount_of: req.userId, // Set this user as a subaccount of the currently logged-in user
+      photo: photo || null, // If no photo, set it to null
     });
 
-    await Promise.all(
-      workingDaysHours.map(async (day) => {
-        await db.WorkingDaysHours.create({
-          medicId: newMedic.id,
-          day: day.day,
-          startTime: day.startTime,
-          endTime: day.endTime,
-        });
-      })
-    );
+    // 2. Create a new Medic profile linked to the new ClinicUser
+    const newMedic = await db.Medic.create({
+      id: newUser.id, // Medic's ID is the same as ClinicUser's ID
+      employmentType,
+      specialization,
+      phone,
+      address,
+      assignedTreatments, // You can add validations to check for valid treatments
+    });
 
-    await Promise.all(
-      daysOff.map(async (dayOff) => {
-        await db.DaysOff.create({
-          medicId: newMedic.id,
-          name: dayOff.name,
-          startDate: dayOff.startDate,
-          endDate: dayOff.endDate,
-          repeatYearly: dayOff.repeatYearly,
-        });
-      })
-    );
+    // 3. Process workingHours object into an array and bulk create
+    const workingDaysHours = Object.entries(workingHours).map(([day, hours]) => {
+      const [startTime, endTime] = hours.split('-'); // Split the "08:00-16:00" string into startTime and endTime
+      return {
+        medicId: newMedic.id, // Link to the medic
+        day, // Day name (e.g., "Monday")
+        startTime,
+        endTime,
+      };
+    });
+    if (workingDaysHours.length > 0) {
+      await db.WorkingDaysHours.bulkCreate(workingDaysHours);
+    }
 
-    const permissionsToInsert = permissions.map((permission) => ({
-      userId: newUser.id,
-      permissionId: permission.id,
-      isEnabled: permission.isEnabled,
-    }));
+    // 4. Bulk create days off for the medic
+    if (daysOff && daysOff.length > 0) {
+      const daysOffData = daysOff.map((dayOff) => ({
+        medicId: newMedic.id, // Link to medic
+        name: dayOff.name,
+        startDate: dayOff.startDate,
+        endDate: dayOff.endDate,
+        repeatYearly: dayOff.repeatYearly,
+      }));
+      await db.DaysOff.bulkCreate(daysOffData);
+    }
 
-    await db.ClinicUserPermission.bulkCreate(permissionsToInsert);
+    // 5. Assign permissions to the new medic
+    if (permissions && permissions.length > 0) {
+      const permissionsToInsert = permissions.map((permission) => ({
+        userId: newUser.id, // Link to the new user
+        permissionId: permission.id,
+        isEnabled: permission.isEnabled,
+      }));
+      await db.ClinicUserPermission.bulkCreate(permissionsToInsert);
+    }
 
-    res.status(201).json({ message: 'Medic created successfully', newUser, newMedic });
+    // 6. Send success response
+    res.status(201).json({
+      message: 'Medic created successfully',
+      medic: {
+        id: newMedic.id,
+        name: newUser.name,
+        email: newUser.email,
+        employmentType: newMedic.employmentType,
+        specialization: newMedic.specialization,
+      },
+    });
   } catch (error) {
     console.error('Error creating medic:', error);
     res.status(500).json({ error: 'Failed to create medic' });
   }
 };
+
 
 
 // View Medic

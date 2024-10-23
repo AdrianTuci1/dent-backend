@@ -38,10 +38,11 @@ const seedDemoData = async () => {
 
       const demoClinic = await Clinic.create({
         name: 'Demo Clinic',
-        subdomain: 'demo.dentms.ro',
+        subdomain: 'demo',
         planId: 1,
-        username: 'demo',
+        username: 'admin@demo.dentms.ro',
         password: hashedClinicPassword,
+        timezone: 'Europe/Bucharest',
       });
       console.log('Demo clinic created:', demoClinic.toJSON());
     } else {

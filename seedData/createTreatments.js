@@ -13,6 +13,7 @@ const createTreatments = async (models, components, transaction) => {
       components: ['Cleaning Kit'],
       componentsUnits: [1],
       price: 100.0,
+      color: '#FF5733',
     },
     {
       id: 'T002',
@@ -23,6 +24,7 @@ const createTreatments = async (models, components, transaction) => {
       components: ['Filling Kit'],
       componentsUnits: [1],
       price: 150.0,
+      color: '#33FF57',
     },
     {
       id: 'T003',
@@ -33,6 +35,7 @@ const createTreatments = async (models, components, transaction) => {
       components: ['Whitening Gel'],
       componentsUnits: [1],
       price: 200.0,
+      color: '#3357FF',
     },
     {
       id: 'T004',
@@ -43,6 +46,7 @@ const createTreatments = async (models, components, transaction) => {
       components: ['Orthodontic Braces'],
       componentsUnits: [1],
       price: 300.0,
+      color: '#FF33A6',
     },
     {
       id: 'T005',
@@ -53,6 +57,7 @@ const createTreatments = async (models, components, transaction) => {
       components: ['X-Ray Film'],
       componentsUnits: [2],
       price: 75.0,
+      color: '#FFD700',
     },
   ];
   

@@ -26,6 +26,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.FLOAT,
       allowNull: false,
     },
+    color: {
+      type: DataTypes.STRING, // Storing color as a string (e.g., '#FF5733')
+      allowNull: false,
+    },
   });
 
   return Treatment;

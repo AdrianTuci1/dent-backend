@@ -17,7 +17,7 @@ const getClinicDatabase = async (clinicDbName) => {
 
 //Create new Treatment
 exports.createTreatment = async (req, res) => {
-  const { name, category, description, duration, price, componentIds, componentUnits } = req.body;
+  const { name, category, description, duration, price, componentIds, componentUnits, color } = req.body;
   const clinicDbName = req.headers['x-clinic-db'];
 
   if (!clinicDbName) {
@@ -50,6 +50,7 @@ exports.createTreatment = async (req, res) => {
         description,
         duration,
         price,
+        color,
       }, { transaction });
 
       // Prepare the treatment components data for the many-to-many relationship
@@ -105,7 +106,7 @@ exports.getAllTreatments = async (req, res) => {
 //Update Treatment by ID
 exports.updateTreatment = async (req, res) => {
   const { treatmentId } = req.params;
-  const { name, category, description, duration, price, componentIds, componentUnits } = req.body;
+  const { name, category, description, duration, price, componentIds, componentUnits, color } = req.body;
   const clinicDbName = req.headers['x-clinic-db'];
 
   if (!clinicDbName) {
@@ -132,6 +133,7 @@ exports.updateTreatment = async (req, res) => {
         description,
         duration,
         price,
+        color,
       }, { transaction });
 
       // Clear the existing component associations

@@ -5,7 +5,8 @@ const {
   updateAppointment,
   deleteAppointment,
   getPatientAppointments,
-  getMedicAppointments
+  getMedicAppointments,
+  getWeekAppointments
 } = require('../controllers/clinicDB/appointmentController');
 const {
   addTreatmentToAppointment,
@@ -48,5 +49,8 @@ router.get('/patient/:patientId', getPatientAppointments);
 
 // Get today's or this week's appointments for a medic (with 'today' or 'week' filter)
 router.get('/medic/:medicId?', authenticate, getMedicAppointments);
+
+// Route to get appointments by week, optionally filtered by medicId
+router.post('/week-appointments', getWeekAppointments);
 
 module.exports = router;
