@@ -17,7 +17,7 @@ const seedDemoData = async () => {
 
     // Create demo user and clinic (check if they exist to avoid duplication)
     const existingUser = await User.findOne({ where: { email: 'demo@dentms.ro' } });
-    const existingClinic = await Clinic.findOne({ where: { subdomain: 'demo.dentms.ro' } });
+    const existingClinic = await Clinic.findOne({ where: { subdomain: 'demo' } });
 
     if (!existingUser) {
       const hashedPassword = await bcrypt.hash('password', 10);
@@ -101,11 +101,11 @@ const seedDemoData = async () => {
           DaysOff,
         };
 
-        const { medicUser } = await createAdminAndMedic(models, transaction);
+        const { medicUser, medicUser2, medicUser3 } = await createAdminAndMedic(models, transaction);
         const patientUser = await createPatients(models, transaction);
         const component = await createComponents(models, transaction);
         const treatment = await createTreatments(models, component, transaction);
-        await createAppointments(models, patientUser, medicUser, treatment, transaction);
+        await createAppointments(models, patientUser, medicUser, medicUser2, medicUser3, treatment, transaction);
     
         await transaction.commit();
         console.log('Demo data seeded successfully.');

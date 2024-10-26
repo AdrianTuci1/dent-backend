@@ -13,6 +13,8 @@ const categoryRoutes = require('./routes/categoryRoutes');
 const medicRoutes = require('./routes/medicRoutes');
 const patientRoutes = require('./routes/patientRoutes');
 
+const searchRoutes = require('./routes/searchRoutes')
+
 const http = require('http');
 const WebSocket = require('ws');
 const setupAppointmentsWebSocket = require('./websockets/appointmentsSockets');
@@ -46,6 +48,8 @@ app.use('/api/category', categoryRoutes);
 
 app.use('/api/medics', medicRoutes);
 app.use('/api/patients', patientRoutes);
+
+app.use('/api/search', searchRoutes);
 
 // Home route for testing
 app.get('/', (req, res) => {

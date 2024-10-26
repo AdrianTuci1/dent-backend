@@ -6,7 +6,6 @@ const {
   deleteAppointment,
   getPatientAppointments,
   getMedicAppointments,
-  getWeekAppointments
 } = require('../controllers/clinicDB/appointmentController');
 const {
   addTreatmentToAppointment,
@@ -14,6 +13,7 @@ const {
   removeTreatmentFromAppointment
 } = require('../controllers/clinicDB/appointmentTreatmentController');
 const authenticate = require('../middleware/authenticate');  // Main account authentication
+const { getWeekAppointments } = require('../controllers/clinicDB/getWeek');
 // const selectClinicDB = require('../middleware/selectClinicDb');
 
 const router = express.Router();
@@ -50,7 +50,7 @@ router.get('/patient/:patientId', getPatientAppointments);
 // Get today's or this week's appointments for a medic (with 'today' or 'week' filter)
 router.get('/medic/:medicId?', authenticate, getMedicAppointments);
 
-// Route to get appointments by week, optionally filtered by medicId
-router.post('/week-appointments', getWeekAppointments);
+router.post('/week', authenticate, getWeekAppointments)
+
 
 module.exports = router;

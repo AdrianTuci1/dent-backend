@@ -450,71 +450,7 @@ exports.getMedicAppointments = async (req, res) => {
 
 
 
-// Controller to get appointments by week with optional medicId
-exports.getWeekAppointments = async (req, res) => {
-  const { startDate, endDate, medicId } = req.body;  // Receive startDate, endDate, and optionally medicId from request body
-  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
 
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
-  try {
-    const db = await getClinicDatabase(clinicDbName);  // Initialize clinic-specific database
 
-    // Define the where condition for filtering appointments by week and optionally by medic
-    const whereCondition = {
-      date: {
-        [Sequelize.Op.between]: [startDate, endDate],
-      },
-      ...(medicId && { medicUser: medicId }),  // If medicId is provided, filter by medicUser
-    };
 
-    // Fetch appointments for the given week range
-    const appointments = await db.Appointment.findAll({
-      where: whereCondition,
-      include: [
-        {
-          model: db.ClinicUser,
-          as: 'medic',  // Include medic details
-          attributes: ['id', 'name'],
-        },
-        {
-          model: db.ClinicUser,
-          as: 'patient',  // Include patient details
-          attributes: ['id', 'name'],
-        },
-        {
-          model: db.AppointmentTreatment,
-          as: 'AppointmentTreatments',  // Alias for appointment treatments
-          include: {
-            model: db.Treatment,
-            as: 'treatmentDetails',  // Alias for treatment details
-            attributes: ['name', 'color'],
-          },
-        },
-      ],
-      order: [['date', 'ASC'], ['time', 'ASC']],  // Sort by date and time
-    });
-
-    // Format the response for each appointment
-    const formattedAppointments = appointments.map((appointment) => ({
-      appointmentId: appointment.appointmentId,
-      status: appointment.status,
-      initialTreatment: appointment.AppointmentTreatments[0]?.treatmentDetails?.name || 'No treatment',  // First treatment
-      color: appointment.AppointmentTreatments[0]?.treatmentDetails?.color || '#FF5733',  // Use default color if not provided
-      startHour: appointment.time,
-      endHour: calculateEndHour(appointment.time, appointment.AppointmentTreatments),  // Calculate end time
-      date: appointment.date,
-      patientUser: appointment.patient?.name || 'Unknown',  // Fallback if patient name is missing
-      medicUser: appointment.medic?.name || 'Unknown',  // Fallback if medic name is missing
-    }));
-
-    res.status(200).json({
-      appointments: formattedAppointments,
-      message: 'Appointments fetched successfully',
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching appointments', error: error.message });
-  }
-};
