@@ -8,6 +8,9 @@ const createPatients = require('./seedData/createPatients');
 const createComponents = require('./seedData/createComponents');
 const createTreatments = require('./seedData/createTreatments');
 const createAppointments = require('./seedData/createAppointments');
+const createAvailabilitySlots = require('./seedData/createAvailabilitySlots');
+const createClinicAvailability = require('./seedData/createClinicAvailability');
+const createPatientRequests = require('./seedData/createPatientRequests');
 
 const seedDemoData = async () => {
   try {
@@ -65,16 +68,19 @@ const seedDemoData = async () => {
     // Initialize and sync the demo clinic database
     const {
       ClinicUser,
-      Appointment,
-      Patient,
       Medic,
+      Patient,
+      Appointment,
       Treatment,
       Component,
-      AppointmentTreatment, // Include AppointmentTreatment
+      AppointmentTreatment,
       Permission,
       ClinicUserPermission,
       WorkingDaysHours,
       DaysOff,
+      AvailabilitySlots,
+      PatientRequest,
+      ClinicAvailability,
       syncClinicDatabase,
     } = initializeClinicDatabase('demo_db');
 
@@ -89,9 +95,9 @@ const seedDemoData = async () => {
       try {
         const models = {
           ClinicUser,
-          Appointment,
           Patient,
           Medic,
+          Appointment,
           Treatment,
           Component,
           AppointmentTreatment,
@@ -99,6 +105,9 @@ const seedDemoData = async () => {
           ClinicUserPermission,
           WorkingDaysHours,
           DaysOff,
+          AvailabilitySlots,
+          PatientRequest,
+          ClinicAvailability,
         };
 
         const { medicUser, medicUser2, medicUser3 } = await createAdminAndMedic(models, transaction);
@@ -106,7 +115,16 @@ const seedDemoData = async () => {
         const component = await createComponents(models, transaction);
         const treatment = await createTreatments(models, component, transaction);
         await createAppointments(models, patientUser, medicUser, medicUser2, medicUser3, treatment, transaction);
-    
+
+        // Seed Availability Slots
+        await createAvailabilitySlots(models, [medicUser, medicUser2, medicUser3], transaction);
+
+        // Seed Clinic Availability
+        await createClinicAvailability(models, transaction);
+
+        // Seed Patient Requests
+        await createPatientRequests(models, patientUser, transaction);
+
         await transaction.commit();
         console.log('Demo data seeded successfully.');
       } catch (error) {

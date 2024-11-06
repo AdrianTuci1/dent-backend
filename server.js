@@ -3,6 +3,8 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const db = require('./models/mainDB');  // Import Sequelize models
 
+require('./cleanup/availabilityCleanup');
+
 const authRoutes = require('./routes/authRoutes');  // Import routes
 const clinicRoutes = require('./routes/clinicRoutes');
 const treatmentRoutes = require('./routes/treatmentRoutes');
@@ -13,7 +15,8 @@ const categoryRoutes = require('./routes/categoryRoutes');
 const medicRoutes = require('./routes/medicRoutes');
 const patientRoutes = require('./routes/patientRoutes');
 
-const searchRoutes = require('./routes/searchRoutes')
+const searchRoutes = require('./routes/searchRoutes');
+const requestsRoutes = require('./routes/requestAppointmentRoutes');
 
 const http = require('http');
 const WebSocket = require('ws');
@@ -50,6 +53,7 @@ app.use('/api/medics', medicRoutes);
 app.use('/api/patients', patientRoutes);
 
 app.use('/api/search', searchRoutes);
+app.use('/api/requests', requestsRoutes);
 
 // Home route for testing
 app.get('/', (req, res) => {

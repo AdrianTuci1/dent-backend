@@ -14,6 +14,10 @@ const clinicUserPermissionModel = require('./clinicUserPermission');
 const workingDaysHoursModel = require('./workingDaysHours')
 const daysOffModel = require('./daysOff')
 
+const availabilitySlotsModel = require('./AvailabilitySlots');
+const patientRequestModel = require('./PatientRequest');
+const clinicAvailabilityModel = require('./ClinicAvailability');
+
 const initializeClinicDatabase = (dbName) => {
   const clinicSequelize = new Sequelize(`postgres://admin:admin@postgres:5432/${dbName}`, {
     logging: false,
@@ -34,6 +38,9 @@ const initializeClinicDatabase = (dbName) => {
   const ClinicUserPermission = clinicUserPermissionModel(clinicSequelize, Sequelize.DataTypes);
   const WorkingDaysHours = workingDaysHoursModel(clinicSequelize, Sequelize.DataTypes);
   const DaysOff = daysOffModel(clinicSequelize, Sequelize.DataTypes);
+  const AvailabilitySlots = availabilitySlotsModel(clinicSequelize, Sequelize.DataTypes);
+  const PatientRequest = patientRequestModel(clinicSequelize, Sequelize.DataTypes);
+  const ClinicAvailability = clinicAvailabilityModel(clinicSequelize, Sequelize.DataTypes);
 
   // Set up associations
 
@@ -193,6 +200,22 @@ const initializeClinicDatabase = (dbName) => {
     as: 'appointmentTreatments',
   });
 
+
+    // ClinicUser hasMany PatientRequests as both patient and medic
+  PatientRequest.belongsTo(ClinicUser, { foreignKey: 'patient_id', as: 'patient' });
+  ClinicUser.hasMany(PatientRequest, { foreignKey: 'patient_id', as: 'requestsByPatient' });
+
+  PatientRequest.belongsTo(ClinicUser, { foreignKey: 'medic_id', as: 'medic' });
+  ClinicUser.hasMany(PatientRequest, { foreignKey: 'medic_id', as: 'requestsForMedic' });
+
+  // AvailabilitySlots belongs to ClinicUser as medic
+  AvailabilitySlots.belongsTo(ClinicUser, { foreignKey: 'medic_id', as: 'medic' });
+  ClinicUser.hasMany(AvailabilitySlots, { foreignKey: 'medic_id', as: 'availabilitySlots' });
+
+  // Relate AvailabilitySlots with ClinicAvailability for clinic-wide tracking
+  AvailabilitySlots.belongsTo(ClinicAvailability, { foreignKey: 'clinic_availability_id', as: 'clinicAvailability' });
+  ClinicAvailability.hasMany(AvailabilitySlots, { foreignKey: 'clinic_availability_id', as: 'availabilitySlots' });
+
   // If using DentalHistory model
   Patient.hasMany(DentalHistory, { foreignKey: 'patientId', as: 'dentalHistories' });
   DentalHistory.belongsTo(Patient, { foreignKey: 'patientId', as: 'patient' });
@@ -223,6 +246,9 @@ const initializeClinicDatabase = (dbName) => {
     ClinicUserPermission,
     WorkingDaysHours,
     DaysOff,
+    AvailabilitySlots,
+    PatientRequest,
+    ClinicAvailability,
     syncClinicDatabase,
   };
 };
