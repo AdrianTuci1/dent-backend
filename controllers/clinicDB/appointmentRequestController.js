@@ -1,5 +1,4 @@
 // controllers/appointmentRequestController.js
-
 const initializeClinicDatabase = require('../../models/clinicDB');
 const { Op } = require('sequelize');
 
@@ -30,6 +29,13 @@ const getDateRange = (startDate, days = 90) => {
   return dates;
 };
 
+
+// controllers/availabilityController.js
+
+// controllers/availabilityController.js
+
+const moment = require('moment');
+
 exports.getAvailableDates = async (req, res) => {
   const { medic_id } = req.query;
   const clinicDbName = req.headers['x-clinic-db'];
@@ -41,61 +47,41 @@ exports.getAvailableDates = async (req, res) => {
   try {
     const db = await getClinicDatabase(clinicDbName);
 
-    // Define the timeframe and date range
+    // Fetch Days Off and Working Days Hours
+    const daysOff = await db.DaysOff.findAll({ where: { medicId: medic_id } });
+    const workingHours = await db.WorkingDaysHours.findAll({ where: { medicId: medic_id } });
+
+    // Convert Days Off to a list of dates
+    const daysOffSet = new Set();
     const today = new Date();
     const dateRange = getDateRange(today, 90); // Next 3 months
 
-    // Fetch all unavailable slots within the date range
-    const unavailableSlots = await db.AvailabilitySlots.findAll({
-      attributes: ['date', 'start_time', 'end_time'],
-      where: {
-        medic_id,
-        date: { [Op.between]: [today, new Date(today.setMonth(today.getMonth() + 3))] },
-      },
+    daysOff.forEach(dayOff => {
+      const startDate = new Date(dayOff.startDate);
+      const endDate = dayOff.endDate ? new Date(dayOff.endDate) : startDate;
+
+      dateRange.forEach(date => {
+        if (
+          (date >= startDate && date <= endDate) ||
+          (dayOff.repeatYearly && date.getMonth() === startDate.getMonth() && date.getDate() === startDate.getDate())
+        ) {
+          daysOffSet.add(date.toISOString().split('T')[0]);
+        }
+      });
     });
 
-    // Group unavailable slots by date
-    const unavailableByDate = unavailableSlots.reduce((acc, slot) => {
-      const date = slot.date.toISOString().split('T')[0];
-      if (!acc[date]) acc[date] = [];
-      acc[date].push({ start: slot.start_time, end: slot.end_time });
-      return acc;
-    }, {});
-
-    // Define working hours (e.g., 9:00 to 17:00)
-    const startOfDay = '09:00';
-    const endOfDay = '17:00';
-
-    // Calculate available dates
+    // Get available dates by checking working hours and excluding days off
     const availableDates = [];
-    for (const date of dateRange) {
-      const slotsForDate = unavailableByDate[date] || [];
 
-      // Check if there’s any 1-hour slot within working hours that’s available
-      let currentTime = new Date(`1970-01-01T${startOfDay}:00Z`).getTime();
-      const endTime = new Date(`1970-01-01T${endOfDay}:00Z`).getTime();
+    dateRange.forEach(date => {
+      const dateString = date.toISOString().split('T')[0];
+      if (daysOffSet.has(dateString)) return; // Skip if it's a day off
 
-      let isDateAvailable = false;
-      while (currentTime < endTime) {
-        const nextHour = currentTime + 60 * 60 * 1000;
+      const dayName = date.toLocaleString('en-US', { weekday: 'long' });
+      const workingDay = workingHours.find(day => day.day === dayName);
 
-        // Check if this hour overlaps with any unavailable slot
-        const isHourUnavailable = slotsForDate.some(slot => {
-          const slotStart = new Date(`1970-01-01T${slot.start}:00Z`).getTime();
-          const slotEnd = new Date(`1970-01-01T${slot.end}:00Z`).getTime();
-          return currentTime < slotEnd && nextHour > slotStart;
-        });
-
-        if (!isHourUnavailable) {
-          isDateAvailable = true;
-          break;
-        }
-
-        currentTime = nextHour;
-      }
-
-      if (isDateAvailable) availableDates.push(date);
-    }
+      if (workingDay) availableDates.push(dateString); // Include if it's a valid working day
+    });
 
     return res.status(200).json({ availableDates });
   } catch (error) {
@@ -107,6 +93,9 @@ exports.getAvailableDates = async (req, res) => {
 
 
 // Endpoint 2: Get available time slots for a specific date
+
+// controllers/availabilityController.js
+
 exports.getAvailableTimeSlots = async (req, res) => {
   const { date, medic_id } = req.query;
   const clinicDbName = req.headers['x-clinic-db'];
@@ -118,41 +107,79 @@ exports.getAvailableTimeSlots = async (req, res) => {
   try {
     const db = await getClinicDatabase(clinicDbName);
 
-    let availableSlots;
+    // Check if the date falls within any day off range
+    const dayOff = await db.DaysOff.findOne({
+      where: {
+        medicId: medic_id,
+        [Op.or]: [
+          { startDate: { [Op.lte]: date }, endDate: { [Op.gte]: date } },
+          { startDate: { [Op.lte]: date }, endDate: null, repeatYearly: true },
+        ],
+      },
+    });
 
-    if (medic_id) {
-      // Fetch available time slots for a specific medic on a specific date
-      availableSlots = await db.AvailabilitySlots.findAll({
-        attributes: ['start_time', 'end_time'],
-        where: {
-          medic_id,
-          date,
-          is_available: true,
-        },
-      });
-    } else {
-      // Fetch available time slots for the clinic on a specific date
-      availableSlots = await db.ClinicAvailability.findAll({
-        attributes: ['start_time', 'end_time'],
-        where: {
-          date,
-          available_providers: { [Op.gt]: 0 },
-        },
-      });
+    if (dayOff) {
+      return res.status(200).json({ availableTimeSlots: [] }); // No slots if it's a day off
     }
 
-    const timeSlots = availableSlots.map(slot => ({
-      start_time: slot.start_time,
-      end_time: slot.end_time,
+    // Determine the day of the week for the given date
+    const dayName = new Date(date).toLocaleString('en-US', { weekday: 'long' });
+
+    // Get working hours for the specified day
+    const workingHours = await db.WorkingDaysHours.findOne({
+      where: { medicId: medic_id, day: dayName },
+    });
+
+    if (!workingHours || !workingHours.startTime || !workingHours.endTime) {
+      return res.status(200).json({ availableTimeSlots: [] }); // No slots if no working hours
+    }
+
+    // Define working hours based on medic’s schedule
+    const startOfDay = workingHours.startTime;
+    const endOfDay = workingHours.endTime;
+
+    // Fetch unavailable slots for the specific date and medic
+    const unavailableSlots = await db.AvailabilitySlots.findAll({
+      attributes: ['start_time', 'end_time'],
+      where: { date, medic_id },
+    });
+
+    // Convert unavailable slots to time ranges
+    const unavailableTimes = unavailableSlots.map(slot => ({
+      start: new Date(`1970-01-01T${slot.start_time}`).getTime(),
+      end: new Date(`1970-01-01T${slot.end_time}`).getTime(),
     }));
 
-    return res.status(200).json({ availableTimeSlots: timeSlots });
+    // Calculate available time slots within working hours
+    const availableTimeSlots = [];
+    let currentTime = new Date(`1970-01-01T${startOfDay}`).getTime();
+    const endTime = new Date(`1970-01-01T${endOfDay}`).getTime();
+
+    while (currentTime < endTime) {
+      const nextHour = currentTime + 60 * 60 * 1000;
+
+      // Check if the current slot overlaps with any unavailable slot
+      const isUnavailable = unavailableTimes.some(slot => {
+        return currentTime < slot.end && nextHour > slot.start;
+      });
+
+      if (!isUnavailable) {
+        availableTimeSlots.push(new Date(currentTime).toISOString().substring(11, 16)); // Format as HH:MM
+      }
+
+      currentTime = nextHour;
+    }
+
+    return res.status(200).json({ availableTimeSlots });
   } catch (error) {
     console.error('Error fetching available time slots:', error);
     return res.status(500).json({ message: 'Error fetching available time slots' });
   }
 };
 
+
+
+// request an appointment (patient)
 
 exports.requestAppointment = async (req, res) => {
   const { patient_id, medic_id, requested_date, requested_time, reason, notes } = req.body;
@@ -170,28 +197,40 @@ exports.requestAppointment = async (req, res) => {
     const transaction = await db.clinicSequelize.transaction();
 
     try {
-      let clinicAvailable, slotAvailable;
-
-      // Step 2: Check medic or clinic availability based on request parameters
       if (medic_id) {
-        slotAvailable = await db.AvailabilitySlots.findOne({
+        // Check if the requested slot for the specific medic is occupied
+        const slotOccupied = await db.AvailabilitySlots.findOne({
           where: {
             medic_id,
             date: requested_date,
             start_time: requested_time,
-            is_available: true,
+            is_available: false,
           },
           transaction,
         });
 
-        if (!slotAvailable) {
+        if (slotOccupied) {
           await transaction.rollback();
           return res.status(400).json({
-            message: 'The requested time slot is unavailable with the selected medic. Please choose another time or medic.',
+            message: 'The requested time slot is already occupied with the selected medic. Please choose another time or medic.',
           });
         }
+
+        // Mark the slot as unavailable in AvailabilitySlots for the specific medic
+        await db.AvailabilitySlots.update(
+          { is_available: false },
+          {
+            where: {
+              medic_id,
+              date: requested_date,
+              start_time: requested_time,
+            },
+            transaction,
+          }
+        );
       } else {
-        clinicAvailable = await db.ClinicAvailability.findOne({
+        // Check for availability at the clinic level if no specific medic is provided
+        const clinicAvailable = await db.ClinicAvailability.findOne({
           where: {
             date: requested_date,
             start_time: { [Op.lte]: requested_time },
@@ -207,9 +246,12 @@ exports.requestAppointment = async (req, res) => {
             message: 'The requested time slot is unavailable in the clinic. Please choose another time.',
           });
         }
+
+        // Decrement available providers by 1
+        await clinicAvailable.decrement('available_providers', { transaction });
       }
 
-      // Step 3: Create the patient request in the clinic-specific database
+      // Step 2: Create the patient request in the clinic-specific database
       const appointmentRequest = await db.PatientRequest.create({
         patient_id,
         medic_id,
@@ -218,7 +260,6 @@ exports.requestAppointment = async (req, res) => {
         status: 'pending',
         reason,
         notes,
-        clinic_availability_id: clinicAvailable ? clinicAvailable.id : null,
       }, { transaction });
 
       // Commit the transaction if all goes well

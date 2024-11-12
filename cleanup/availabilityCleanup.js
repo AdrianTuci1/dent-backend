@@ -1,5 +1,5 @@
 // cleanup/availabilityCleanup.js
-
+const Op = require('sequelize')
 const cron = require('node-cron');
 const initializeClinicDatabase = require('../models/clinicDB');
 const dbCache = {}; // Cache for clinic databases
