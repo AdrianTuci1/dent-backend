@@ -29,12 +29,7 @@ const getDateRange = (startDate, days = 90) => {
   return dates;
 };
 
-
 // controllers/availabilityController.js
-
-// controllers/availabilityController.js
-
-const moment = require('moment');
 
 exports.getAvailableDates = async (req, res) => {
   const { medic_id } = req.query;

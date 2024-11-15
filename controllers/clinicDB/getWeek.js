@@ -1,6 +1,6 @@
-const Sequelize = require('sequelize');
 const { Op } = require('sequelize');
 const initializeClinicDatabase = require('../../models/clinicDB');  // Import your initialize function
+const { calculateEndHour } = require('../../utils/calcultateEndHour');
 
 // Cache the initialized connections to avoid re-initializing for every request
 const dbCache = {};
@@ -18,58 +18,62 @@ const getClinicDatabase = async (clinicDbName) => {
 
 
 exports.getWeekAppointments = async (req, res) => {
-  const { startDate, endDate } = req.body;  // Only extract startDate and endDate from body
-  const clinicDbName = req.headers['x-clinic-db'];  // Get clinic database name from headers
+  const { startDate, endDate } = req.body; // Retrieve dates from the request body
+  const clinicDbName = req.headers['x-clinic-db'];
+
+  // Validate input
+  if (!startDate || !endDate) {
+    return res.status(400).json({ message: 'startDate and endDate are required in the body.' });
+  }
+
+  if (!clinicDbName) {
+    return res.status(400).json({ message: 'Missing clinic database name in headers.' });
+  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);  // Initialize database based on clinicDbName
+    const db = await getClinicDatabase(clinicDbName);
 
+    // Adjust date range for full-day query
+    const startOfDay = new Date(startDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(endDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    console.log('Querying appointments for:', startOfDay, endOfDay);
+
+    // Fetch appointments for the specified date range
     const appointments = await db.Appointment.findAll({
       where: {
         date: {
-          [Sequelize.Op.gte]: startDate,
-          [Sequelize.Op.lte]: endDate,
+          [Op.gte]: startOfDay,
+          [Op.lte]: endOfDay,
         },
       },
       include: [
-        {
-          model: db.ClinicUser,
-          as: 'medic', // Include medic details
-          attributes: ['id', 'name'],
-        },
-        {
-          model: db.ClinicUser,
-          as: 'patient', // Include patient details
-          attributes: ['id', 'name'],
-        },
-        {
-          model: db.AppointmentTreatment,
-          as: 'AppointmentTreatments', // Use alias for AppointmentTreatment
-          include: {
-            model: db.Treatment,
-            as: 'treatmentDetails', // Fetch treatment details
-            attributes: ['name'],
-          },
-        },
+        { model: db.ClinicUser, as: 'medic', attributes: ['name'] },   // Include medic details
+        { model: db.ClinicUser, as: 'patient', attributes: ['name'] }, // Include patient details
+        { model: db.Treatment, as: 'treatments', attributes: ['name', 'color', 'duration'] }, // Include treatment details
       ],
       order: [['date', 'ASC'], ['time', 'ASC']],
     });
-    
 
-    // Format the response to match the expected structure
+    if (!appointments || appointments.length === 0) {
+      return res.status(404).json({ message: 'No appointments found for the given date range.' });
+    }
+
+    // Format the results
     const formattedAppointments = appointments.map((appointment) => ({
       appointmentId: appointment.appointmentId,
+      status: appointment.status,
       date: appointment.date,
       time: appointment.time,
-      patientUser: {
-        id: appointment.patient.id,
-        name: appointment.patient.name,
-      },
-      medicUser: {
-        id: appointment.medic.id,
-        name: appointment.medic.name,
-      },
-      initialTreatment: appointment.AppointmentTreatments[0]?.treatmentDetails?.name || null, // Get the initial treatment
+      patientUser: appointment.patient.name,
+      medicUser: appointment.medic.name,
+      initialTreatment: appointment.treatments[0]?.name || 'No treatment', // First treatment, if exists
+      color: appointment.treatments[0]?.color || '#FF5733',  // Use default color if none provided
+      startHour: appointment.time,
+      endHour: calculateEndHour(appointment.time, appointment.treatments),
     }));
 
     res.status(200).json({
@@ -77,7 +81,7 @@ exports.getWeekAppointments = async (req, res) => {
       message: 'Appointments fetched successfully',
     });
   } catch (error) {
-    console.error('Error fetching appointments:', error);
+    console.error('Error fetching appointments:', error.message);
     res.status(500).json({ message: 'Error fetching appointments', error: error.message });
   }
 };

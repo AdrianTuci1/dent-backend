@@ -48,7 +48,7 @@ router.delete('/:appointmentId/treatments/:treatmentId', authenticate, removeTre
 router.get('/patient/:patientId', getPatientAppointments);
 
 // Get today's or this week's appointments for a medic (with 'today' or 'week' filter)
-router.get('/medic/:medicId?', authenticate, getMedicAppointments);
+router.get('/medic/:medicId?', getMedicAppointments);
 
 router.post('/week', authenticate, getWeekAppointments)
 
