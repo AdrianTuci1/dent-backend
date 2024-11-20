@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const initializeClinicDatabase = require('../../models/clinicDB');  // Import your initialize function
+const initializeClinicDatabase = require('../models');  // Import your initialize function
 const { calculateEndHour } = require('../../utils/calcultateEndHour');
 
 // Cache the initialized connections to avoid re-initializing for every request
@@ -52,7 +52,7 @@ exports.getWeekAppointments = async (req, res) => {
       },
       include: [
         { model: db.ClinicUser, as: 'medic', attributes: ['name'] },   // Include medic details
-        { model: db.ClinicUser, as: 'patient', attributes: ['name'] }, // Include patient details
+        { model: db.ClinicUser, as: 'patient', attributes: ['id', 'name'] }, // Include patient details
         { model: db.Treatment, as: 'treatments', attributes: ['name', 'color', 'duration'] }, // Include treatment details
       ],
       order: [['date', 'ASC'], ['time', 'ASC']],
@@ -68,6 +68,7 @@ exports.getWeekAppointments = async (req, res) => {
       status: appointment.status,
       date: appointment.date,
       time: appointment.time,
+      patientId: appointment.patient.id,
       patientUser: appointment.patient.name,
       medicUser: appointment.medic.name,
       initialTreatment: appointment.treatments[0]?.name || 'No treatment', // First treatment, if exists

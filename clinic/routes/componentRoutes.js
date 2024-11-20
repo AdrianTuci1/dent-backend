@@ -1,6 +1,6 @@
 const express = require('express');
-const { createComponent, getAllComponents, updateComponent, deleteComponent } = require('../controllers/clinicDB/componentController');
-const authenticate = require('../middleware/authenticate'); // JWT Middleware
+const { createComponent, getAllComponents, updateComponent, deleteComponent } = require('../controllers/componentController');
+const authenticate = require('../../middleware/authenticate'); // JWT Middleware
 
 const router = express.Router();
 

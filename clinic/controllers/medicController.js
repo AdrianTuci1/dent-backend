@@ -1,5 +1,5 @@
 const generateRandomString = require('../../utils/generateRandomString'); // Assuming helper function for random string
-const initializeClinicDatabase = require('../../models/clinicDB');
+const initializeClinicDatabase = require('../models');
 
 // Cache the initialized connections to avoid re-initializing for every request
 const dbCache = {};

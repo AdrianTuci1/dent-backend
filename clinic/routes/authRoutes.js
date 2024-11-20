@@ -2,8 +2,8 @@
 
 const express = require('express');
 const router = express.Router();
-const AuthenticationController = require('../controllers/clinicDB/authController');
-const authenticate = require('../middleware/authenticate');
+const AuthenticationController = require('../controllers/authController');
+const authenticate = require('../../middleware/authenticate');
 
 // Login route for all roles (clinic, admin, medic, patient)
 router.post('/login', AuthenticationController.login);

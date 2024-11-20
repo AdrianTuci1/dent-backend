@@ -1,5 +1,5 @@
 // controllers/appointmentRequestController.js
-const initializeClinicDatabase = require('../../models/clinicDB');
+const initializeClinicDatabase = require('../models');
 const { Op } = require('sequelize');
 
 // Cache for database connections

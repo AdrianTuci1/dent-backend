@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 const moment = require('moment-timezone');
-const { Clinic, syncMainDatabase } = require('../models/mainDB');
+const { Clinic, syncMainDatabase } = require('../main/models');
 
 /**
  * Fetch the clinic's timezone from the main database based on the subdomain

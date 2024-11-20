@@ -1,5 +1,5 @@
 const express = require('express');
-const { createCategory, getCategories, deleteCategory } = require('../controllers/clinicDB/categoryController');
+const { createCategory, getCategories, deleteCategory } = require('../controllers/categoryController');
 const router = express.Router();
 
 // Add a new category

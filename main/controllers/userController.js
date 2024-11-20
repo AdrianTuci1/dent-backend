@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt');
-const db = require('../../models/mainDB');
+const db = require('../models');
 const jwt = require('jsonwebtoken');
 
 // Create a new user

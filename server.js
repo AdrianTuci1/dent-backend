@@ -1,22 +1,21 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
-const db = require('./models/mainDB');  // Import Sequelize models
+const db = require('./main/models');  // Import Sequelize models
 
-require('./cleanup/availabilityCleanup');
 
-const authRoutes = require('./routes/authRoutes');  // Import routes
-const clinicRoutes = require('./routes/clinicRoutes');
-const treatmentRoutes = require('./routes/treatmentRoutes');
-const componentRoutes = require('./routes/componentRoutes');
-const appointmentRoutes = require('./routes/appointmentRoutes');
-const categoryRoutes = require('./routes/categoryRoutes');
+const authRoutes = require('./clinic/routes/authRoutes');  // Import routes
+const clinicRoutes = require('./main/routes/clinicRoutes');
+const treatmentRoutes = require('./clinic/routes/treatmentRoutes');
+const componentRoutes = require('./clinic/routes/componentRoutes');
+const appointmentRoutes = require('./clinic/routes/appointmentRoutes');
+const categoryRoutes = require('./clinic/routes/categoryRoutes');
 
-const medicRoutes = require('./routes/medicRoutes');
-const patientRoutes = require('./routes/patientRoutes');
+const medicRoutes = require('./clinic/routes/medicRoutes');
+const patientRoutes = require('./clinic/routes/patientRoutes');
 
-const searchRoutes = require('./routes/searchRoutes');
-const requestsRoutes = require('./routes/requestAppointmentRoutes');
+const searchRoutes = require('./clinic/routes/searchRoutes');
+const requestsRoutes = require('./clinic/routes/requestAppointmentRoutes');
 
 const http = require('http');
 const WebSocket = require('ws');

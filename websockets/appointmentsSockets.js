@@ -1,6 +1,6 @@
 const WebSocket = require('ws');
 const Sequelize = require('sequelize');
-const initializeClinicDatabase = require('../models/clinicDB'); // Assuming this initializes the correct database
+const initializeClinicDatabase = require('../clinic/models'); // Assuming this initializes the correct database
 const { calculateCurrentWeek } = require('../utils/dateUtils'); // Helper to calculate current week based on timezone
 const { calculateEndHour } = require('../utils/calcultateEndHour');
 
@@ -32,7 +32,7 @@ function setupAppointmentsWebSocket(wss) {
             },
             include: [
               { model: ClinicUser, as: 'medic', attributes: ['name'] },   // Include medic details
-              { model: ClinicUser, as: 'patient', attributes: ['name'] }, // Include patient details
+              { model: ClinicUser, as: 'patient', attributes: ['id', 'name'] }, // Include patient details
               { model: Treatment, as: 'treatments', attributes: ['name', 'color', 'duration'] }, // Include treatment details
             ],
             limit: 100,
@@ -48,6 +48,7 @@ function setupAppointmentsWebSocket(wss) {
               startHour: appointment.time,
               endHour: calculateEndHour(appointment.time, appointment.treatments),
               date: appointment.date,
+              patientId: appointment.patient.id,
               patientUser: appointment.patient?.name || 'Unknown',  // Fallback if patient name is missing
               medicUser: appointment.medic?.name || 'Unknown',      // Fallback if medic name is missing
             };

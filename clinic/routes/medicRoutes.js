@@ -1,4 +1,4 @@
-const medicController = require('../controllers/clinicDB/medicController');
+const medicController = require('../controllers/medicController');
 const express = require('express');
 const router = express.Router();
 

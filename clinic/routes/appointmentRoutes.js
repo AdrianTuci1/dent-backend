@@ -6,14 +6,14 @@ const {
   deleteAppointment,
   getPatientAppointments,
   getMedicAppointments,
-} = require('../controllers/clinicDB/appointmentController');
+} = require('../controllers/appointmentController');
 const {
   addTreatmentToAppointment,
   getAllTreatmentsForAppointment,
   removeTreatmentFromAppointment
-} = require('../controllers/clinicDB/appointmentTreatmentController');
-const authenticate = require('../middleware/authenticate');  // Main account authentication
-const { getWeekAppointments } = require('../controllers/clinicDB/getWeek');
+} = require('../controllers/appointmentTreatmentController');
+const authenticate = require('../../middleware/authenticate');  // Main account authentication
+const { getWeekAppointments } = require('../controllers/getWeek');
 // const selectClinicDB = require('../middleware/selectClinicDb');
 
 const router = express.Router();

@@ -1,6 +1,6 @@
 const { Sequelize } = require('sequelize');
-const { Clinic } = require('../models/mainDB');  // Import Clinic model from the main database
-const initializeClinicDatabase = require('../models/clinicDB');  // Function to initialize clinic-specific DB
+const { Clinic } = require('../main/models');  // Import Clinic model from the main database
+const initializeClinicDatabase = require('../clinic/models');  // Function to initialize clinic-specific DB
 
 const connections = {};  // Cache for active connections to avoid reconnecting multiple times
 

@@ -1,7 +1,7 @@
 // routes/appointmentRoutes.js
 
 const express = require('express');
-const { getAvailableDates, getAvailableTimeSlots, requestAppointment, listAppointmentRequests } = require('../controllers/clinicDB/appointmentRequestController');
+const { getAvailableDates, getAvailableTimeSlots, requestAppointment, listAppointmentRequests } = require('../controllers/appointmentRequestController');
 const router = express.Router();
 
 router.get('/available-dates', getAvailableDates);

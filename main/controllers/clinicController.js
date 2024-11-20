@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const { Sequelize } = require('sequelize');
-const db = require('../../models/mainDB');  // Central database models (users, clinics)
+const db = require('../models');  // Central database models (users, clinics)
 
 // Create a new clinic and set up the database
 const createClinic = async (req, res) => {

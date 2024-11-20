@@ -1,5 +1,5 @@
 // categoryController.js
-const initializeClinicDatabase = require('../../models/clinicDB');  // Import the initializer function
+const initializeClinicDatabase = require('../models');  // Import the initializer function
 
 // Cache the initialized connections to avoid re-initializing for every request
 const dbCache = {};

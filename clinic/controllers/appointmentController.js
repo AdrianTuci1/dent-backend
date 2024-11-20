@@ -1,6 +1,6 @@
 const Sequelize = require('sequelize');
 const { Op } = require('sequelize');
-const initializeClinicDatabase = require('../../models/clinicDB');  // Import your initialize function
+const initializeClinicDatabase = require('../models');  // Import your initialize function
 
 // Cache the initialized connections to avoid re-initializing for every request
 const dbCache = {};
