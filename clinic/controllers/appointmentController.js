@@ -282,6 +282,7 @@ exports.getPatientAppointments = async (req, res) => {
     // Format the response
     const formattedAppointments = appointments.map((appointment) => {
       const initialTreatment = appointment.AppointmentTreatments[0]?.treatmentDetails?.name || null; // Get only the first treatment
+      const color = appointment.AppointmentTreatments[0]?.treatmentDetails?.color || "#4287f5";
 
       return {
         appointmentId: appointment.appointmentId,
@@ -292,6 +293,7 @@ exports.getPatientAppointments = async (req, res) => {
           name: appointment.medic.name,
         },
         initialTreatment, // Return only the initial treatment
+        color,
       };
     });
 
@@ -398,7 +400,7 @@ exports.getMedicAppointments = async (req, res) => {
           include: {
             model: db.Treatment,
             as: 'treatmentDetails', // Fetch treatment details
-            attributes: ['name'],
+            attributes: ['name', 'color'],
           },
         },
       ],
@@ -420,6 +422,7 @@ exports.getMedicAppointments = async (req, res) => {
         name: appointment.medic.name,
       },
       initialTreatment: appointment.AppointmentTreatments[0]?.treatmentDetails?.name || null, // Get the initial treatment
+      color: appointment.AppointmentTreatments[0]?.treatmentDetails?.color || '#34abeb',
     }));
 
     // Format upcoming appointments
@@ -436,6 +439,7 @@ exports.getMedicAppointments = async (req, res) => {
         name: appointment.medic.name,
       },
       initialTreatment: appointment.AppointmentTreatments[0]?.treatmentDetails?.name || null, // Get the initial treatment
+      color: appointment.AppointmentTreatments[0]?.treatmentDetails?.color || '#34abeb',
     }));
 
     res.status(200).json({

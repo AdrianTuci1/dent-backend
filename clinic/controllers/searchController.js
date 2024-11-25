@@ -76,3 +76,31 @@ exports.searchPatients = async (req, res) => {
   }
 };
 
+
+exports.searchTreatments = async (req, res) => {
+  const { query } = req.query; // Get search query from the request
+  const clinicDbName = req.headers['x-clinic-db']; // Get clinic database name from headers
+
+  if (!clinicDbName) {
+    return res.status(400).json({ error: 'Clinic database name is required.' });
+  }
+
+  try {
+    const db = await getClinicDatabase(clinicDbName);
+
+    // Fetch treatments based on query, or return the first 10 if no query is provided
+    const treatments = await db.Treatment.findAll({
+      where: query
+        ? { name: { [Op.iLike]: `%${query}%` } } // Filter based on query if provided
+        : {}, // No filter if query is empty
+      attributes: ['id', 'name', 'description'], // Include essential attributes
+      limit: 10, // Limit the number of results
+      order: [['name', 'ASC']], // Sort alphabetically by name
+    });
+
+    res.status(200).json(treatments);
+  } catch (error) {
+    console.error('Error searching treatments:', error);
+    res.status(500).json({ error: 'Failed to search treatments.' });
+  }
+};

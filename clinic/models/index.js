@@ -223,7 +223,7 @@ const initializeClinicDatabase = (dbName) => {
   // Sync the database
   const syncClinicDatabase = async () => {
     try {
-      await clinicSequelize.sync({ force: false });
+      await clinicSequelize.sync({ force: true });
       console.log(`${dbName} synced successfully.`);
     } catch (error) {
       console.error(`Error syncing ${dbName}:`, error);
