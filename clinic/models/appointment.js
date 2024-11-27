@@ -26,7 +26,7 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: false,
     },
     status: {
-      type: DataTypes.ENUM('done', 'upcoming', 'missed', 'not-paid'),
+      type: DataTypes.ENUM('done', 'upcoming', 'missed', 'notpaid'),
       allowNull: false,
     },
     medicUser: {  // Reference to the ClinicUser acting as the medic

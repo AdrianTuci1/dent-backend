@@ -84,9 +84,14 @@ exports.createAppointment = async (req, res) => {
 
 
 // Get Appointment Details including Initial Treatment, Medic, and Patient Information
+
+// we need to add AppointmentTreatment info
+// to this controller so we can get all the
+// required information in 1 request
+
 exports.getAppointmentDetails = async (req, res) => {
   const { appointmentId } = req.params;
-  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
+  const clinicDbName = req.headers['x-clinic-db']; // Get the clinic database name from the headers
 
   if (!clinicDbName) {
     return res.status(400).json({ message: 'Missing clinic database name.' });
@@ -96,41 +101,51 @@ exports.getAppointmentDetails = async (req, res) => {
     // Get the clinic-specific database connection
     const db = await getClinicDatabase(clinicDbName);
 
-    // Find the appointment and include related data like Medic, Patient, and Initial Treatment
+    // Find the appointment and include related data like Medic and Patient
     const appointment = await db.Appointment.findOne({
       where: { appointmentId },
       include: [
         {
           model: db.ClinicUser,
           as: 'medic',
-          attributes: ['id', 'name'],  // Include medic details
+          attributes: ['id', 'name'], // Include medic details
         },
         {
           model: db.ClinicUser,
           as: 'patient',
-          attributes: ['id', 'name'],  // Include patient details
-        }
-      ]
+          attributes: ['id', 'name'], // Include patient details
+        },
+      ],
     });
 
     if (!appointment) {
       return res.status(404).json({ message: 'Appointment not found.' });
     }
 
-    // Fetch the first AppointmentTreatment for the initial treatment
-    const initialTreatment = await db.AppointmentTreatment.findOne({
+    // Fetch all treatments related to the appointment
+    const treatments = await db.AppointmentTreatment.findAll({
       where: { appointmentId },
       include: [
         {
           model: db.Treatment,
-          as: 'treatmentDetails',  // Get treatment details (name) based on treatmentId
-          attributes: ['name', 'color'],
-        }
+          as: 'treatmentDetails', // Get treatment details based on treatmentId
+          attributes: ['id', 'name', 'color'], // Include treatment fields
+        },
       ],
-      order: [['createdAt', 'ASC']]  // Fetch the first treatment created for this appointment
     });
 
-    // Format the response based on your Appointment type
+    // Transform the treatments into the desired format
+    const formattedTreatments = treatments.map((t) => ({
+      treatmentId: t.treatmentDetails.id,
+      treatmentName: t.treatmentDetails.name,
+      color: t.treatmentDetails.color,
+      units: t.units,
+      involvedTeeth: t.involvedTeeth, // Assuming this is an array or string in your DB
+      prescription: t.prescription,
+      details: t.details,
+    }));
+
+    // Format the response
     const response = {
       appointmentId: appointment.appointmentId,
       date: appointment.date,
@@ -139,11 +154,14 @@ exports.getAppointmentDetails = async (req, res) => {
       price: appointment.price,
       isPaid: appointment.isPaid,
       status: appointment.status,
+      medicId: appointment.medic.id,
       medicUser: appointment.medic.name || appointment.medic.id,
+      patientId: appointment.patient.id,
       patientUser: appointment.patient.name || appointment.patient.id,
       createdAt: appointment.createdAt,
       updatedAt: appointment.updatedAt,
-      initialTreatment: initialTreatment?.treatmentDetails?.name || null,  // Get the initial treatment name
+      initialTreatment: formattedTreatments[0]?.treatmentName || null, // Get the first treatment name
+      treatments: formattedTreatments, // Include all treatments in the response
     };
 
     res.status(200).json(response);
@@ -157,8 +175,19 @@ exports.getAppointmentDetails = async (req, res) => {
 // Update Appointment
 exports.updateAppointment = async (req, res) => {
   const { appointmentId } = req.params;
-  const { date, time, medicUser, patientUser, price, status, treatmentId, units } = req.body;  // Including treatmentId and units if provided
-  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
+  const {
+    date,
+    time,
+    medicUser,
+    patientUser,
+    price,
+    status, // Can be overridden by logic
+    treatments,
+    isDone,
+    isPaid,
+  } = req.body;
+
+  const clinicDbName = req.headers['x-clinic-db']; // Get the clinic database name from the headers
 
   if (!clinicDbName) {
     return res.status(400).json({ message: 'Missing clinic database name.' });
@@ -180,25 +209,97 @@ exports.updateAppointment = async (req, res) => {
     appointment.medicUser = medicUser || appointment.medicUser;
     appointment.patientUser = patientUser || appointment.patientUser;
     appointment.price = price || appointment.price;
-    appointment.status = status || appointment.status;
+
+    // Handle isDone and isPaid updates
+    if (isDone !== undefined) appointment.isDone = isDone;
+    if (isPaid !== undefined) appointment.isPaid = isPaid;
+
+    // Determine the new status based on isDone and isPaid
+    if (isDone && !isPaid) {
+      appointment.status = 'notpaid';
+    } else if (isDone && isPaid) {
+      appointment.status = 'done';
+    } else if (isPaid && !isDone) {
+      // If only isPaid is true, retain the current status
+      appointment.status = appointment.status;
+    } else {
+      // Optionally set a default status if neither isDone nor isPaid are true
+      appointment.status = status || appointment.status;
+    }
 
     await appointment.save();
 
-    // Update initial treatment if treatmentId is provided
-    if (treatmentId) {
-      const appointmentTreatment = await db.AppointmentTreatment.findOne({ where: { appointmentId } });
-      if (appointmentTreatment) {
-        appointmentTreatment.treatmentId = treatmentId;
-        appointmentTreatment.units = units || appointmentTreatment.units;
-        await appointmentTreatment.save();
+    // Update treatments if provided
+    if (treatments && Array.isArray(treatments)) {
+      // Fetch existing treatments for the appointment
+      const existingTreatments = await db.AppointmentTreatment.findAll({ where: { appointmentId } });
+
+      // Map existing treatments by their combination of appointmentId and treatmentId
+      const existingTreatmentMap = new Map(
+        existingTreatments.map((existingTreatment) => [
+          `${existingTreatment.appointmentId}-${existingTreatment.treatmentId}`,
+          existingTreatment,
+        ])
+      );
+
+      // Process incoming treatments
+      for (const treatment of treatments) {
+        const key = `${appointmentId}-${treatment.treatmentId}`;
+        if (existingTreatmentMap.has(key)) {
+          // Update existing treatment
+          const existingTreatment = existingTreatmentMap.get(key);
+          existingTreatment.units = treatment.units || existingTreatment.units;
+          existingTreatment.involvedTeeth = treatment.involvedTeeth || existingTreatment.involvedTeeth;
+          existingTreatment.prescription = treatment.prescription || existingTreatment.prescription;
+          existingTreatment.details = treatment.details || existingTreatment.details;
+          await existingTreatment.save();
+
+          // Remove the updated treatment from the map
+          existingTreatmentMap.delete(key);
+        } else {
+          // Add new treatment
+          await db.AppointmentTreatment.create({
+            appointmentId,
+            treatmentId: treatment.treatmentId,
+            units: treatment.units || 0,
+            involvedTeeth: treatment.involvedTeeth || [],
+            prescription: treatment.prescription || '',
+            details: treatment.details || '',
+          });
+        }
+      }
+
+      // Delete remaining treatments in the map (those not in the updated treatments array)
+      for (const [key, existingTreatment] of existingTreatmentMap.entries()) {
+        await existingTreatment.destroy();
       }
     }
 
-    res.status(200).json({ message: 'Appointment updated successfully', appointment });
+    const updatedAppointment = await db.Appointment.findOne({
+      where: { appointmentId },
+      include: [
+        {
+          model: db.AppointmentTreatment,
+          as: 'AppointmentTreatments',
+          include: [
+            {
+              model: db.Treatment,
+              as: 'treatmentDetails',
+              attributes: ['name', 'color'],
+            },
+          ],
+        },
+      ],
+    });
+
+    res.status(200).json({ message: 'Appointment updated successfully', appointment: updatedAppointment });
   } catch (error) {
-    res.status(500).json({ message: 'Error updating appointment', error });
+    console.error('Error updating appointment:', error);
+    res.status(500).json({ message: 'Error updating appointment', error: error.message });
   }
 };
+
+
 
 
 // Delete Appointment
