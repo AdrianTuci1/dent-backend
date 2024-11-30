@@ -1,19 +1,18 @@
 const express = require('express');
 const { createComponent, getAllComponents, updateComponent, deleteComponent } = require('../controllers/componentController');
-const authenticate = require('../../middleware/authenticate'); // JWT Middleware
 
 const router = express.Router();
 
 // Create a new component
-router.post('/', authenticate, createComponent);
+router.post('/',  createComponent);
 
 // Get all components
-router.get('/', authenticate, getAllComponents);
+router.get('/', getAllComponents);
 
 // Update a component by ID
-router.put('/:componentId', authenticate, updateComponent);
+router.put('/:componentId', updateComponent);
 
 // Delete a component by ID
-router.delete('/:componentId', authenticate, deleteComponent);
+router.delete('/:componentId', deleteComponent);
 
 module.exports = router;

@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const AuthenticationController = require('../controllers/authController');
-const authenticate = require('../../middleware/authenticate');
+const authenticateMiddleware = require('../../middleware/authenticate'); // Import authentication middleware
 
 // Login route for all roles (clinic, admin, medic, patient)
 router.post('/login', AuthenticationController.login);
@@ -11,7 +11,7 @@ router.post('/login', AuthenticationController.login);
 // Subaccount PIN Login (for medics)
 router.post(
   '/subaccount/pin-login',
-  authenticate, // Ensure clinic user is authenticated
+  authenticateMiddleware,
   AuthenticationController.subaccountPinLogin
 );
 

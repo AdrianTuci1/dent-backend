@@ -4,18 +4,8 @@ const cors = require('cors');
 const db = require('./main/models');  // Import Sequelize models
 
 
-const authRoutes = require('./clinic/routes/authRoutes');  // Import routes
-const clinicRoutes = require('./main/routes/clinicRoutes');
-const treatmentRoutes = require('./clinic/routes/treatmentRoutes');
-const componentRoutes = require('./clinic/routes/componentRoutes');
-const appointmentRoutes = require('./clinic/routes/appointmentRoutes');
-const categoryRoutes = require('./clinic/routes/categoryRoutes');
-
-const medicRoutes = require('./clinic/routes/medicRoutes');
-const patientRoutes = require('./clinic/routes/patientRoutes');
-
-const searchRoutes = require('./clinic/routes/searchRoutes');
-const requestsRoutes = require('./clinic/routes/requestAppointmentRoutes');
+ // const mainRoutes = require('./main/routes/clinicRoutes');
+const clinicRoutes = require('./clinic/routes/index')
 
 const http = require('http');
 const WebSocket = require('ws');
@@ -41,18 +31,8 @@ app.use(express.json());
 const server = http.createServer(app);
 
 // Define routes
-app.use('/api/auth', authRoutes);         // Authentication routes
-app.use('/api/clinic', clinicRoutes);     // Protected clinic routes
-app.use('/api/treatments', treatmentRoutes);
-app.use('/api/components', componentRoutes);
-app.use('/api/appointments', appointmentRoutes);
-app.use('/api/category', categoryRoutes);
+app.use('/api', clinicRoutes);     // for clinic specific operations
 
-app.use('/api/medics', medicRoutes);
-app.use('/api/patients', patientRoutes);
-
-app.use('/api/search', searchRoutes);
-app.use('/api/requests', requestsRoutes);
 
 // Home route for testing
 app.get('/', (req, res) => {

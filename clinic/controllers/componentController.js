@@ -1,30 +1,11 @@
-const initializeClinicDatabase = require('../models');  // Import the initializer function
-
-// Cache the initialized connections to avoid re-initializing for every request
-const dbCache = {};
-
-const getClinicDatabase = async (clinicDbName) => {
-  if (dbCache[clinicDbName]) {
-    return dbCache[clinicDbName];
-  }
-
-  const clinicDB = initializeClinicDatabase(clinicDbName);
-  dbCache[clinicDbName] = clinicDB;
-
-  return clinicDB;
-};
 
 // Create Component
 exports.createComponent = async (req, res) => {
   const { componentName, unitPrice, vendor, quantity } = req.body;
-  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
 
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     const component = await db.Component.create({
       componentName,
@@ -40,14 +21,10 @@ exports.createComponent = async (req, res) => {
 
 // Get All Components
 exports.getAllComponents = async (req, res) => {
-  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
 
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     const components = await db.Component.findAll();
     res.status(200).json({ components });
@@ -60,14 +37,10 @@ exports.getAllComponents = async (req, res) => {
 exports.updateComponent = async (req, res) => {
   const { componentId } = req.params;
   const { componentName, unitPrice, vendor, quantity } = req.body;
-  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
 
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     const component = await db.Component.findOne({ where: { id: componentId } });
 
@@ -90,14 +63,9 @@ exports.updateComponent = async (req, res) => {
 // Delete Component
 exports.deleteComponent = async (req, res) => {
   const { componentId } = req.params;
-  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
-
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     const component = await db.Component.findOne({ where: { id: componentId } });
 

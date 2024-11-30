@@ -1,19 +1,4 @@
 const generateRandomString = require('../../utils/generateRandomString'); // Assuming helper function for random string
-const initializeClinicDatabase = require('../models');
-
-// Cache the initialized connections to avoid re-initializing for every request
-const dbCache = {};
-
-const getClinicDatabase = async (clinicDbName) => {
-  if (dbCache[clinicDbName]) {
-    return dbCache[clinicDbName];
-  }
-
-  const clinicDB = initializeClinicDatabase(clinicDbName);
-  dbCache[clinicDbName] = clinicDB;
-
-  return clinicDB;
-};
 
 
 // Create Medic
@@ -36,10 +21,9 @@ exports.createMedic = async (req, res) => {
   
   const password = generateRandomString();
   const pin = generateRandomString(4); // Assuming PIN is 4 characters long
-  const clinicDbName = req.headers['x-clinic-db']; // Clinic-specific DB
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     // 1. Create a new ClinicUser
     const newUser = await db.ClinicUser.create({
@@ -119,10 +103,9 @@ exports.createMedic = async (req, res) => {
 
 // View Medic
 exports.viewMedic = async (req, res) => {
-  const clinicDbName = req.headers['x-clinic-db'];
   
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     const medic = await db.ClinicUser.findOne({
       where: { id: req.params.id },
@@ -197,10 +180,10 @@ exports.updateMedic = async (req, res) => {
     daysOff,
     permissions,
   } = req.body;
-  const clinicDbName = req.headers['x-clinic-db'];
+
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     await db.ClinicUser.update(
       { email, name },
@@ -278,10 +261,9 @@ exports.updateMedic = async (req, res) => {
 
 // Delete Medic
 exports.deleteMedic = async (req, res) => {
-  const clinicDbName = req.headers['x-clinic-db'];
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     // Delete associated data first
     await db.WorkingDaysHours.destroy({
@@ -316,10 +298,9 @@ exports.deleteMedic = async (req, res) => {
 
 
 exports.getAllMedicsForTable = async (req, res) => {
-  const clinicDbName = req.headers['x-clinic-db'];
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     const medics = await db.ClinicUser.findAll({
       where: { role: 'medic' },

@@ -1,20 +1,4 @@
-const Sequelize = require('sequelize');
-const { Op } = require('sequelize');
-const initializeClinicDatabase = require('../models');  // Import your initialize function
-
-// Cache the initialized connections to avoid re-initializing for every request
-const dbCache = {};
-
-const getClinicDatabase = async (clinicDbName) => {
-  if (dbCache[clinicDbName]) {
-    return dbCache[clinicDbName];
-  }
-
-  const clinicDB = initializeClinicDatabase(clinicDbName);
-  dbCache[clinicDbName] = clinicDB;
-
-  return clinicDB;
-};
+const Op = require('sequelize');
 
 // Generate the next appointmentId in the format 'AP000001'
 const generateAppointmentId = async (db) => {
@@ -38,15 +22,10 @@ const generateAppointmentId = async (db) => {
 
 exports.createAppointment = async (req, res) => {
   const { date, time, medicUser, patientUser, treatmentId, units, price } = req.body;
-  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
-
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
     // Get the clinic-specific database connection
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     // Generate a new appointment ID
     const appointmentId = await generateAppointmentId(db);
@@ -91,15 +70,10 @@ exports.createAppointment = async (req, res) => {
 
 exports.getAppointmentDetails = async (req, res) => {
   const { appointmentId } = req.params;
-  const clinicDbName = req.headers['x-clinic-db']; // Get the clinic database name from the headers
-
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
     // Get the clinic-specific database connection
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     // Find the appointment and include related data like Medic and Patient
     const appointment = await db.Appointment.findOne({
@@ -187,15 +161,10 @@ exports.updateAppointment = async (req, res) => {
     isPaid,
   } = req.body;
 
-  const clinicDbName = req.headers['x-clinic-db']; // Get the clinic database name from the headers
-
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
     // Get the clinic-specific database connection
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     const appointment = await db.Appointment.findOne({ where: { appointmentId } });
 
@@ -214,6 +183,17 @@ exports.updateAppointment = async (req, res) => {
     if (isDone !== undefined) appointment.isDone = isDone;
     if (isPaid !== undefined) appointment.isPaid = isPaid;
 
+            // Check if date or time is being updated
+            if (date || time) {
+              const currentDateTime = new Date();
+              const newAppointmentDateTime = new Date(`${date || appointment.date}T${time || appointment.time}`);
+        
+              if (newAppointmentDateTime > currentDateTime) {
+                // Future date: Set status to "upcoming"
+                appointment.status = 'upcoming';
+              } 
+            }
+
     // Determine the new status based on isDone and isPaid
     if (isDone && !isPaid) {
       appointment.status = 'notpaid';
@@ -226,6 +206,7 @@ exports.updateAppointment = async (req, res) => {
       // Optionally set a default status if neither isDone nor isPaid are true
       appointment.status = status || appointment.status;
     }
+    
 
     await appointment.save();
 
@@ -305,15 +286,11 @@ exports.updateAppointment = async (req, res) => {
 // Delete Appointment
 exports.deleteAppointment = async (req, res) => {
   const { appointmentId } = req.params;
-  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
 
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
     // Get the clinic-specific database connection
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     const appointment = await db.Appointment.findOne({ where: { appointmentId } });
 
@@ -339,14 +316,9 @@ exports.deleteAppointment = async (req, res) => {
 exports.getPatientAppointments = async (req, res) => {
   const { patientId } = req.params; // Get patientId from params
   const { limit = 20, offset = 0 } = req.query; // Limit and offset for pagination
-  const clinicDbName = req.headers['x-clinic-db']; // Get clinic database from headers
-
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     // Fetch the most recent appointments for the patient, limited to the given number
     const appointments = await db.Appointment.findAll({
@@ -424,14 +396,10 @@ exports.getPatientAppointments = async (req, res) => {
 // Controller to get appointments for both today and the next 20 upcoming appointments (excluding today)
 exports.getMedicAppointments = async (req, res) => {
   const { medicId } = req.params; // medicId can be optional
-  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
 
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
     const { today, tomorrow } = getTodayRange();  // Get today's start and end times
 
     // Define the conditions for today and upcoming appointments

@@ -1,37 +1,19 @@
 const { Op } = require('sequelize');
-const initializeClinicDatabase = require('../models');  // Import your initialize function
 const { calculateEndHour } = require('../../utils/calcultateEndHour');
 
-// Cache the initialized connections to avoid re-initializing for every request
-const dbCache = {};
-
-const getClinicDatabase = async (clinicDbName) => {
-  if (dbCache[clinicDbName]) {
-    return dbCache[clinicDbName];
-  }
-
-  const clinicDB = initializeClinicDatabase(clinicDbName);
-  dbCache[clinicDbName] = clinicDB;
-
-  return clinicDB;
-};
 
 
 exports.getWeekAppointments = async (req, res) => {
   const { startDate, endDate } = req.body; // Retrieve dates from the request body
-  const clinicDbName = req.headers['x-clinic-db'];
 
   // Validate input
   if (!startDate || !endDate) {
     return res.status(400).json({ message: 'startDate and endDate are required in the body.' });
   }
 
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name in headers.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     // Adjust date range for full-day query
     const startOfDay = new Date(startDate);

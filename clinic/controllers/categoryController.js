@@ -1,31 +1,12 @@
-// categoryController.js
-const initializeClinicDatabase = require('../models');  // Import the initializer function
 
-// Cache the initialized connections to avoid re-initializing for every request
-const dbCache = {};
-
-const getClinicDatabase = async (clinicDbName) => {
-  if (dbCache[clinicDbName]) {
-    return dbCache[clinicDbName];
-  }
-
-  const clinicDB = initializeClinicDatabase(clinicDbName);
-  dbCache[clinicDbName] = clinicDB;
-
-  return clinicDB;
-};
 
 // Create a new category
 exports.createCategory = async (req, res) => {
     const { name } = req.body;
-    const clinicDbName = req.headers['x-clinic-db'];
   
-    if (!clinicDbName) {
-      return res.status(400).json({ message: 'Missing clinic database name.' });
-    }
   
     try {
-      const db = await getClinicDatabase(clinicDbName);
+      const db = req.db;
   
       // Create the category
       const category = await db.Category.create({ name });
@@ -37,14 +18,10 @@ exports.createCategory = async (req, res) => {
   
   // Get all categories
   exports.getCategories = async (req, res) => {
-    const clinicDbName = req.headers['x-clinic-db'];
   
-    if (!clinicDbName) {
-      return res.status(400).json({ message: 'Missing clinic database name.' });
-    }
   
     try {
-      const db = await getClinicDatabase(clinicDbName);
+      const db = req.db;
   
       const categories = await db.Category.findAll({ order: [['name', 'ASC']] });
       res.status(200).json({ categories });
@@ -56,14 +33,9 @@ exports.createCategory = async (req, res) => {
   // Delete a category by ID
   exports.deleteCategory = async (req, res) => {
     const { categoryId } = req.params;
-    const clinicDbName = req.headers['x-clinic-db'];
-  
-    if (!clinicDbName) {
-      return res.status(400).json({ message: 'Missing clinic database name.' });
-    }
   
     try {
-      const db = await getClinicDatabase(clinicDbName);
+      const db = req.db;
   
       const category = await db.Category.findByPk(categoryId);
       if (!category) {

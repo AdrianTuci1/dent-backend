@@ -1,31 +1,13 @@
-const initializeClinicDatabase = require('../models');  // Import your initialize function
 
-// Cache the initialized connections to avoid re-initializing for every request
-const dbCache = {};
-
-const getClinicDatabase = async (clinicDbName) => {
-  if (dbCache[clinicDbName]) {
-    return dbCache[clinicDbName];
-  }
-
-  const clinicDB = initializeClinicDatabase(clinicDbName);
-  dbCache[clinicDbName] = clinicDB;
-
-  return clinicDB;
-};
 
 // Add Treatment to Appointment
 exports.addTreatmentToAppointment = async (req, res) => {
   const { appointmentId } = req.params;
   const { treatmentId, units, involvedTeeth, prescription, details } = req.body;
-  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
 
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     const appointmentTreatment = await db.AppointmentTreatment.create({
       appointmentId,
@@ -45,14 +27,10 @@ exports.addTreatmentToAppointment = async (req, res) => {
 // Get All Treatments for an Appointment
 exports.getAllTreatmentsForAppointment = async (req, res) => {
   const { appointmentId } = req.params;
-  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
 
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     const treatments = await db.AppointmentTreatment.findAll({
       where: { appointmentId },
@@ -72,14 +50,11 @@ exports.getAllTreatmentsForAppointment = async (req, res) => {
 // Remove Treatment from Appointment
 exports.removeTreatmentFromAppointment = async (req, res) => {
   const { appointmentId, treatmentId } = req.params;
-  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
 
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
+
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     const appointmentTreatment = await db.AppointmentTreatment.findOne({
       where: { appointmentId, treatmentId }

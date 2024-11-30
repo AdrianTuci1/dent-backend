@@ -1,38 +1,16 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const initializeClinicDatabase = require('../models');  // Import the initializer function
 
-// Cache the initialized connections to avoid re-initializing for every request
-const dbCache = {};
-
-const getClinicDatabase = async (clinicDbName) => {
-  // If the database is already initialized, return it from the cache
-  if (dbCache[clinicDbName]) {
-    return dbCache[clinicDbName];
-  }
-
-  // Initialize the clinic-specific database
-  const clinicDB = initializeClinicDatabase(clinicDbName);
-
-  // Cache the initialized database connection for future requests
-  dbCache[clinicDbName] = clinicDB;
-
-  return clinicDB;
-};
 
 class AuthenticationController {
   // Unified login method
   static async login(req, res) {
     try {
       const { email, password } = req.body;
-      const clinicDbName = req.headers['x-clinic-db'];  // Use clinicDbName passed in header
   
-      if (!clinicDbName) {
-        return res.status(400).json({ message: 'Missing clinic database name.' });
-      }
   
       // Initialize and cache the clinic-specific database
-      const { ClinicUser } = await getClinicDatabase(clinicDbName);
+      const { ClinicUser } = req.db;
   
       console.log('ClinicUser model:', ClinicUser);  // Debug log
   
@@ -123,14 +101,10 @@ class AuthenticationController {
     try {
       const { subaccountId, pin } = req.body;
       const { userId } = req.user; // Extracted from JWT token
-      const clinicDbName = req.headers['x-clinic-db'];  // Use clinicDbName passed in header
 
-      if (!clinicDbName) {
-        return res.status(400).json({ message: 'Missing clinic database name.' });
-      }
 
       // Initialize and cache the clinic-specific database
-      const { ClinicUser } = await getClinicDatabase(clinicDbName);
+      const { ClinicUser } = req.db;
 
       // Verify that the subaccount belongs to the clinic user
       const subaccount = await ClinicUser.findOne({

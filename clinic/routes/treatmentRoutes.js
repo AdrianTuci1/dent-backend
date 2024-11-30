@@ -1,26 +1,25 @@
 const express = require('express');
 const { createTreatment, getAllTreatments, updateTreatment, deleteTreatment, getTreatmentById, getTreatmentsByCategory } = require('../controllers/treatmentController');
-const authenticate = require('../../middleware/authenticate'); // JWT Middleware
 
 const router = express.Router();
 
 // Create a new treatment
-router.post('/', authenticate, createTreatment);
+router.post('/', createTreatment);
 
 // Get all treatments
-router.get('/', authenticate, getAllTreatments);
+router.get('/', getAllTreatments);
 
 // Get treatments by Cateogry
 
-router.get('/category', authenticate, getTreatmentsByCategory)
+router.get('/category', getTreatmentsByCategory)
 
 // Get treatment by ID
-router.get('/:treatmentId', authenticate, getTreatmentById)
+router.get('/:treatmentId', getTreatmentById)
 
 // Update a treatment by ID
-router.put('/:treatmentId', authenticate, updateTreatment);
+router.put('/:treatmentId', updateTreatment);
 
 // Delete a treatment by ID
-router.delete('/:treatmentId', authenticate, deleteTreatment);
+router.delete('/:treatmentId', deleteTreatment);
 
 module.exports = router;

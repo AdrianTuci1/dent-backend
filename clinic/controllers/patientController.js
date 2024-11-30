@@ -1,24 +1,8 @@
-const initializeClinicDatabase = require('../models');  // Import the initializer function
-
-// Cache the initialized connections to avoid re-initializing for every request
-const dbCache = {};
-
-const getClinicDatabase = async (clinicDbName) => {
-  if (dbCache[clinicDbName]) {
-    return dbCache[clinicDbName];
-  }
-
-  const clinicDB = initializeClinicDatabase(clinicDbName);
-  dbCache[clinicDbName] = clinicDB;
-
-  return clinicDB;
-};
 
 
 const getPatients = async (req, res) => {
     try {
-      const clinicDb = req.headers['x-clinic-db'];
-      const db = await getClinicDatabase(clinicDb);
+      const db = req.db;
       
       if (!db || !db.ClinicUser) {
         return res.status(500).json({ message: 'Database connection or model not available' });
@@ -121,8 +105,7 @@ const getPatients = async (req, res) => {
     // Create a new patient
   const createPatient = async (req, res) => {
     try {
-      const clinicDb = req.headers['x-clinic-db'];
-      const db = await getClinicDatabase(clinicDb);
+      const db = req.db;
       
       const { ClinicUser, Patient } = db;
 
@@ -161,11 +144,10 @@ const getPatients = async (req, res) => {
 
   // Get patient by ID
   const getPatientById = async (req, res) => {
-    const clinicDb = req.headers['x-clinic-db'];
     const { id } = req.params;
 
     try {
-      const db = await getClinicDatabase(clinicDb);
+      const db = req.db;
       const { ClinicUser, Patient } = db;
 
       const patient = await ClinicUser.findByPk(id, {
@@ -188,12 +170,11 @@ const getPatients = async (req, res) => {
 
   // Update patient details
   const updatePatient = async (req, res) => {
-    const clinicDb = req.headers['x-clinic-db'];
     const { id } = req.params;
     const { name, age, gender, phone, address, labels, notes } = req.body;
 
     try {
-      const db = await getClinicDatabase(clinicDb);
+      const db = req.db;
       const { ClinicUser, Patient } = db;
 
       const patientUser = await ClinicUser.findByPk(id);
@@ -220,11 +201,10 @@ const getPatients = async (req, res) => {
 
   // Delete a patient by ID
   const deletePatient = async (req, res) => {
-    const clinicDb = req.headers['x-clinic-db'];
     const { id } = req.params;
 
     try {
-      const db = await getClinicDatabase(clinicDb);
+      const db = req.db;
       const { ClinicUser, Patient } = db;
 
       const patientUser = await ClinicUser.findByPk(id);

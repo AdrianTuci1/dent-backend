@@ -12,37 +12,33 @@ const {
   getAllTreatmentsForAppointment,
   removeTreatmentFromAppointment
 } = require('../controllers/appointmentTreatmentController');
-const authenticate = require('../../middleware/authenticate');  // Main account authentication
 const { getWeekAppointments } = require('../controllers/getWeek');
-// const selectClinicDB = require('../middleware/selectClinicDb');
+const updateMissedAppointments = require('../middleware/updateMissedAppointments'); 
 
 const router = express.Router();
-
-// Use `selectClinicDB` middleware for all routes
-// router.use(selectClinicDB);
 
 // Routes requiring subaccount authentication (e.g., medics access)
 
 // Create a new appointment with initial treatment (subaccount access)
-router.post('/', authenticate, createAppointment);
+router.post('/', createAppointment);
 
 // Get appointment details (including treatments) (subaccount access)
-router.get('/:appointmentId', authenticate, getAppointmentDetails);
+router.get('/:appointmentId',updateMissedAppointments, getAppointmentDetails);
 
 // Update an appointment (subaccount access)
-router.put('/:appointmentId', authenticate, updateAppointment);
+router.put('/:appointmentId',updateMissedAppointments, updateAppointment);
 
 // Delete an appointment (and its treatments) (subaccount access)
-router.delete('/:appointmentId', authenticate, deleteAppointment);
+router.delete('/:appointmentId', deleteAppointment);
 
 // Add treatment to an appointment (subaccount access)
-router.post('/:appointmentId/treatments', authenticate, addTreatmentToAppointment);
+router.post('/:appointmentId/treatments', addTreatmentToAppointment);
 
 // Get all treatments for an appointment (subaccount access)
-router.get('/:appointmentId/treatments', authenticate, getAllTreatmentsForAppointment);
+router.get('/:appointmentId/treatments', getAllTreatmentsForAppointment);
 
 // Remove treatment from an appointment (subaccount access)
-router.delete('/:appointmentId/treatments/:treatmentId', authenticate, removeTreatmentFromAppointment);
+router.delete('/:appointmentId/treatments/:treatmentId', removeTreatmentFromAppointment);
 
 // Get recent appointments for a patient (with pagination and limit)
 router.get('/patient/:patientId', getPatientAppointments);
@@ -50,7 +46,7 @@ router.get('/patient/:patientId', getPatientAppointments);
 // Get today's or this week's appointments for a medic (with 'today' or 'week' filter)
 router.get('/medic/:medicId?', getMedicAppointments);
 
-router.post('/week', authenticate, getWeekAppointments)
+router.post('/week',updateMissedAppointments, getWeekAppointments)
 
 
 module.exports = router;

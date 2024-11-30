@@ -1,31 +1,11 @@
-const initializeClinicDatabase = require('../models');  // Import the initializer function
-
-// Cache the initialized connections to avoid re-initializing for every request
-const dbCache = {};
-
-const getClinicDatabase = async (clinicDbName) => {
-  if (dbCache[clinicDbName]) {
-    return dbCache[clinicDbName];
-  }
-
-  const clinicDB = initializeClinicDatabase(clinicDbName);
-  dbCache[clinicDbName] = clinicDB;
-
-  return clinicDB;
-};
 
 
 //Create new Treatment
 exports.createTreatment = async (req, res) => {
   const { name, category, description, duration, price, componentIds, componentUnits, color } = req.body;
-  const clinicDbName = req.headers['x-clinic-db'];
-
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     // Use a transaction to ensure all steps succeed or fail together
     const transaction = await db.clinicSequelize.transaction();
@@ -86,14 +66,10 @@ exports.createTreatment = async (req, res) => {
 
 // Get All Treatments
 exports.getAllTreatments = async (req, res) => {
-  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
 
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     const treatments = await db.Treatment.findAll();
     res.status(200).json({ treatments });
@@ -107,14 +83,9 @@ exports.getAllTreatments = async (req, res) => {
 exports.updateTreatment = async (req, res) => {
   const { treatmentId } = req.params;
   const { name, category, description, duration, price, componentIds, componentUnits, color } = req.body;
-  const clinicDbName = req.headers['x-clinic-db'];
-
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     const transaction = await db.clinicSequelize.transaction();
 
@@ -172,14 +143,9 @@ exports.updateTreatment = async (req, res) => {
 
 exports.deleteTreatment = async (req, res) => {
   const { treatmentId } = req.params;
-  const clinicDbName = req.headers['x-clinic-db'];  // Get the clinic database name from the headers
-
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     const transaction = await db.clinicSequelize.transaction();
 
@@ -213,14 +179,9 @@ exports.deleteTreatment = async (req, res) => {
 
 exports.getTreatmentById = async (req, res) => {
   const { treatmentId } = req.params;
-  const clinicDbName = req.headers['x-clinic-db'];
-
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     // Fetch the treatment data
     const treatment = await db.Treatment.findOne({ where: { id: treatmentId } });
@@ -265,15 +226,10 @@ exports.getTreatmentById = async (req, res) => {
 
 // Fetch treatments grouped and sorted by category
 exports.getTreatmentsByCategory = async (req, res) => {
-  const clinicDbName = req.headers['x-clinic-db'];
-
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
     // Fetch the appropriate database instance for the clinic
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
     
     // Fetch categories and treatments from the clinic database
     const [categories, treatments] = await Promise.all([

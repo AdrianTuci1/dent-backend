@@ -1,22 +1,4 @@
-// controllers/appointmentRequestController.js
-const initializeClinicDatabase = require('../models');
-const { Op } = require('sequelize');
-
-// Cache for database connections
-const dbCache = {};
-
-const getClinicDatabase = async (clinicDbName) => {
-  if (dbCache[clinicDbName]) {
-    return dbCache[clinicDbName];
-  }
-
-  const clinicDB = initializeClinicDatabase(clinicDbName);
-  dbCache[clinicDbName] = clinicDB;
-
-  return clinicDB;
-};
-
-// Endpoint 1: Get available dates
+const Op = require('sequelize');
 
 // Helper function to generate date range for the next three months
 const getDateRange = (startDate, days = 90) => {
@@ -33,14 +15,10 @@ const getDateRange = (startDate, days = 90) => {
 
 exports.getAvailableDates = async (req, res) => {
   const { medic_id } = req.query;
-  const clinicDbName = req.headers['x-clinic-db'];
 
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     // Fetch Days Off and Working Days Hours
     const daysOff = await db.DaysOff.findAll({ where: { medicId: medic_id } });
@@ -93,14 +71,10 @@ exports.getAvailableDates = async (req, res) => {
 
 exports.getAvailableTimeSlots = async (req, res) => {
   const { date, medic_id } = req.query;
-  const clinicDbName = req.headers['x-clinic-db'];
 
-  if (!clinicDbName || !date) {
-    return res.status(400).json({ message: 'Missing clinic database name or date.' });
-  }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     // Check if the date falls within any day off range
     const dayOff = await db.DaysOff.findOne({
@@ -178,15 +152,11 @@ exports.getAvailableTimeSlots = async (req, res) => {
 
 exports.requestAppointment = async (req, res) => {
   const { patient_id, medic_id, requested_date, requested_time, reason, notes } = req.body;
-  const clinicDbName = req.headers['x-clinic-db'];
 
-  if (!clinicDbName) {
-    return res.status(400).json({ message: 'Missing clinic database name.' });
-  }
 
   try {
     // Step 1: Initialize or get the clinic-specific database
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     // Use a transaction to ensure data consistency
     const transaction = await db.clinicSequelize.transaction();
@@ -278,16 +248,15 @@ exports.requestAppointment = async (req, res) => {
 
 
 exports.listAppointmentRequests = async (req, res) => {
-  const clinicDbName = req.headers['x-clinic-db'];
   const { status } = req.query; // Optional status filter (e.g., pending, approved, rejected)
   const medicId = req.headers['x-medic-id']; // Medic ID from the request header
 
-  if (!clinicDbName || !medicId) {
-    return res.status(400).json({ message: 'Missing clinic database name or medic ID.' });
+  if ( !medicId) {
+    return res.status(400).json({ message: 'Missing medic ID.' });
   }
 
   try {
-    const db = await getClinicDatabase(clinicDbName);
+    const db = req.db;
 
     // Define search criteria
     const whereClause = {
