@@ -1,27 +1,36 @@
-const Op = require('sequelize');
+const { Op } = require('sequelize');
 
-// Generate the next appointmentId in the format 'AP000001'
 const generateAppointmentId = async (db) => {
-  // Get the latest appointment
+  const currentDate = new Date();
+  const year = currentDate.getFullYear().toString().slice(-2); // Get last two digits of the year
+  const month = (currentDate.getMonth() + 1).toString().padStart(2, '0'); // Get two-digit month
+
+  const prefix = `AP${year}${month}`; // Build the prefix
+
+  // Find the latest appointment ID for the current year and month
   const lastAppointment = await db.Appointment.findOne({
+    where: {
+      appointmentId: {
+        [Op.like]: `${prefix}%`,
+      },
+    },
     order: [['appointmentId', 'DESC']],
   });
 
-  if (!lastAppointment || !lastAppointment.appointmentId) {
-    // If no appointments exist, start with 'AP000001'
-    return 'AP000001';
-  }
+  // Extract the sequential number and increment it
+  const lastSequence = lastAppointment
+    ? parseInt(lastAppointment.appointmentId.slice(-6), 10)
+    : 0;
 
-  // Extract the numeric part from the last appointment ID (e.g., 'AP000001' -> 1)
-  const lastIdNumber = parseInt(lastAppointment.appointmentId.slice(2), 10);
-  const nextIdNumber = lastIdNumber + 1;
+  const nextSequence = lastSequence + 1;
+  const nextSequenceStr = nextSequence.toString().padStart(6, '0'); // Ensure 6 digits
 
-  // Format the new appointment ID (e.g., 2 -> 'AP000002')
-  return `AP${nextIdNumber.toString().padStart(6, '0')}`;
+  return `${prefix}${nextSequenceStr}`; // Combine all parts
 };
 
+
 exports.createAppointment = async (req, res) => {
-  const { date, time, medicUser, patientUser, treatmentId, units, price } = req.body;
+  const { date, time, medicId, patientId, treatmentId, units, price } = req.body;
 
   try {
     // Get the clinic-specific database connection
@@ -35,8 +44,8 @@ exports.createAppointment = async (req, res) => {
       appointmentId,
       date,
       time,
-      medicUser,
-      patientUser,
+      medicUser: medicId,
+      patientUser: patientId,
       price,
       status: 'upcoming',
     });
@@ -134,6 +143,7 @@ exports.getAppointmentDetails = async (req, res) => {
       patientUser: appointment.patient.name || appointment.patient.id,
       createdAt: appointment.createdAt,
       updatedAt: appointment.updatedAt,
+      treatmentId: formattedTreatments[0]?.treatmentId || null,
       initialTreatment: formattedTreatments[0]?.treatmentName || null, // Get the first treatment name
       treatments: formattedTreatments, // Include all treatments in the response
     };
@@ -146,76 +156,95 @@ exports.getAppointmentDetails = async (req, res) => {
 
 
 
-// Update Appointment
+// Update Appointment (PATCH)
+// Assumes req.db is a Sequelize DB connection with Appointment and AppointmentTreatment models
 exports.updateAppointment = async (req, res) => {
   const { appointmentId } = req.params;
   const {
     date,
     time,
-    medicUser,
-    patientUser,
+    medicId,
+    patientId,
     price,
-    status, // Can be overridden by logic
-    treatments,
+    status, // Optional: can be overridden by logic below
+    treatments, // Optional array of treatments
     isDone,
     isPaid,
   } = req.body;
 
-
   try {
-    // Get the clinic-specific database connection
     const db = req.db;
-
     const appointment = await db.Appointment.findOne({ where: { appointmentId } });
 
     if (!appointment) {
       return res.status(404).json({ message: 'Appointment not found' });
     }
 
-    // Update appointment fields
-    appointment.date = date || appointment.date;
-    appointment.time = time || appointment.time;
-    appointment.medicUser = medicUser || appointment.medicUser;
-    appointment.patientUser = patientUser || appointment.patientUser;
-    appointment.price = price || appointment.price;
-
-    // Handle isDone and isPaid updates
-    if (isDone !== undefined) appointment.isDone = isDone;
-    if (isPaid !== undefined) appointment.isPaid = isPaid;
-
-            // Check if date or time is being updated
-            if (date || time) {
-              const currentDateTime = new Date();
-              const newAppointmentDateTime = new Date(`${date || appointment.date}T${time || appointment.time}`);
-        
-              if (newAppointmentDateTime > currentDateTime) {
-                // Future date: Set status to "upcoming"
-                appointment.status = 'upcoming';
-              } 
-            }
-
-    // Determine the new status based on isDone and isPaid
-    if (isDone && !isPaid) {
-      appointment.status = 'notpaid';
-    } else if (isDone && isPaid) {
-      appointment.status = 'done';
-    } else if (isPaid && !isDone) {
-      // If only isPaid is true, retain the current status
-      appointment.status = appointment.status;
-    } else {
-      // Optionally set a default status if neither isDone nor isPaid are true
-      appointment.status = status || appointment.status;
+    // Partial update of appointment fields
+    if ('date' in req.body) {
+      appointment.date = date;
     }
-    
+    if ('time' in req.body) {
+      appointment.time = time;
+    }
+    if ('medicId' in req.body) {
+      appointment.medicUser = medicId;
+    }
+    if ('patientId' in req.body) {
+      appointment.patientUser = patientId;
+    }
+    if ('price' in req.body) {
+      appointment.price = price;
+    }
+    if ('isDone' in req.body) {
+      appointment.isDone = isDone;
+    }
+    if ('isPaid' in req.body) {
+      appointment.isPaid = isPaid;
+    }
+
+    // If date or time changed, potentially update status
+    if ('date' in req.body || 'time' in req.body) {
+      const currentDateTime = new Date();
+      const finalDate = appointment.date || '';
+      const finalTime = appointment.time || '';
+      const newAppointmentDateTime = new Date(`${finalDate}T${finalTime}`);
+      if (newAppointmentDateTime > currentDateTime) {
+        // Future date: Set status to "upcoming" if not done/paid
+        appointment.status = 'upcoming';
+      }
+    }
+
+    // Update status based on isDone and isPaid
+    // If isDone and isPaid => 'done'
+    // If isDone and not isPaid => 'notpaid'
+    // If neither isDone nor isPaid, fallback to status if provided or existing status
+    if (appointment.isDone && !appointment.isPaid) {
+      appointment.status = 'notpaid';
+    } else if (appointment.isDone && appointment.isPaid) {
+      appointment.status = 'done';
+    } else if (appointment.isPaid && !appointment.isDone) {
+      // If only isPaid is true, retain current status unless explicitly changed
+      if ('status' in req.body && status) {
+        appointment.status = status;
+      }
+    } else {
+      // If neither done nor paid
+      if ('status' in req.body && status) {
+        appointment.status = status;
+      }
+    }
 
     await appointment.save();
 
     // Update treatments if provided
-    if (treatments && Array.isArray(treatments)) {
-      // Fetch existing treatments for the appointment
-      const existingTreatments = await db.AppointmentTreatment.findAll({ where: { appointmentId } });
+    if (Array.isArray(treatments)) {
+      // Fetch existing treatments for this appointment
+      const existingTreatments = await db.AppointmentTreatment.findAll({
+        where: { appointmentId },
+      });
 
-      // Map existing treatments by their combination of appointmentId and treatmentId
+      // Create a map for quick lookup
       const existingTreatmentMap = new Map(
         existingTreatments.map((existingTreatment) => [
           `${existingTreatment.appointmentId}-${existingTreatment.treatmentId}`,
@@ -223,39 +252,44 @@ exports.updateAppointment = async (req, res) => {
         ])
       );
 
-      // Process incoming treatments
+      // Normalize the incoming treatments, ensuring we only update fields if they are provided
       for (const treatment of treatments) {
         const key = `${appointmentId}-${treatment.treatmentId}`;
         if (existingTreatmentMap.has(key)) {
-          // Update existing treatment
+          // Partial update of existing treatment
           const existingTreatment = existingTreatmentMap.get(key);
-          existingTreatment.units = treatment.units || existingTreatment.units;
-          existingTreatment.involvedTeeth = treatment.involvedTeeth || existingTreatment.involvedTeeth;
-          existingTreatment.prescription = treatment.prescription || existingTreatment.prescription;
-          existingTreatment.details = treatment.details || existingTreatment.details;
-          await existingTreatment.save();
 
-          // Remove the updated treatment from the map
+          // Only update fields if they are provided in the request body
+          if ('units' in treatment) existingTreatment.units = treatment.units;
+          if ('involvedTeeth' in treatment) existingTreatment.involvedTeeth = treatment.involvedTeeth;
+          if ('prescription' in treatment) existingTreatment.prescription = treatment.prescription;
+          if ('details' in treatment) existingTreatment.details = treatment.details;
+
+          await existingTreatment.save();
           existingTreatmentMap.delete(key);
         } else {
-          // Add new treatment
-          await db.AppointmentTreatment.create({
-            appointmentId,
-            treatmentId: treatment.treatmentId,
-            units: treatment.units || 0,
-            involvedTeeth: treatment.involvedTeeth || [],
-            prescription: treatment.prescription || '',
-            details: treatment.details || '',
-          });
+          // Create a new treatment only if treatmentId is provided
+          // If treatmentId is mandatory, ensure it's present. Otherwise handle gracefully.
+          if (treatment.treatmentId) {
+            await db.AppointmentTreatment.create({
+              appointmentId,
+              treatmentId: treatment.treatmentId,
+              units: 'units' in treatment ? treatment.units : 0,
+              involvedTeeth: 'involvedTeeth' in treatment ? treatment.involvedTeeth : [],
+              prescription: 'prescription' in treatment ? treatment.prescription : '',
+              details: 'details' in treatment ? treatment.details : '',
+            });
+          }
         }
       }
 
-      // Delete remaining treatments in the map (those not in the updated treatments array)
+      // Remove treatments not present in the updated list
       for (const [key, existingTreatment] of existingTreatmentMap.entries()) {
         await existingTreatment.destroy();
       }
     }
 
+    // Fetch the updated appointment with treatments
     const updatedAppointment = await db.Appointment.findOne({
       where: { appointmentId },
       include: [

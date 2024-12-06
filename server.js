@@ -20,7 +20,7 @@ const app = express();
 // Use CORS middleware (apply to all routes by default)
 const corsOptions = {
   origin: ['http://localhost:5173'], // Adjust as needed
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],  // Allowed methods
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],  // Allowed methods
   credentials: true,  // If using cookies or authentication headers
 };
 app.use(cors(corsOptions));

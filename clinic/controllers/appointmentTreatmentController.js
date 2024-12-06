@@ -1,73 +1,55 @@
 
-
-// Add Treatment to Appointment
-exports.addTreatmentToAppointment = async (req, res) => {
-  const { appointmentId } = req.params;
-  const { treatmentId, units, involvedTeeth, prescription, details } = req.body;
-
+exports.updateAppointmentTreatments = async (req, res) => {
+  const { appointmentId } = req.params; // Extract appointmentId from the route
+  const { treatments } = req.body; // Extract treatments array from the request body
 
   try {
     const db = req.db;
 
-    const appointmentTreatment = await db.AppointmentTreatment.create({
-      appointmentId,
-      treatmentId,
-      units,
-      involvedTeeth,
-      prescription,
-      details
-    });
-
-    res.status(201).json({ message: 'Treatment added to appointment successfully', appointmentTreatment });
-  } catch (error) {
-    res.status(500).json({ message: 'Error adding treatment to appointment', error });
-  }
-};
-
-// Get All Treatments for an Appointment
-exports.getAllTreatmentsForAppointment = async (req, res) => {
-  const { appointmentId } = req.params;
-
-
-  try {
-    const db = req.db;
-
-    const treatments = await db.AppointmentTreatment.findAll({
-      where: { appointmentId },
-      include: [db.Treatment]
-    });
-
-    if (!treatments) {
-      return res.status(404).json({ message: 'No treatments found for this appointment' });
+    // Validate the input
+    if (!Array.isArray(treatments)) {
+      return res.status(400).json({ error: 'Invalid treatments format. Expected an array.' });
     }
 
-    res.status(200).json({ treatments });
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching treatments for appointment', error });
-  }
-};
-
-// Remove Treatment from Appointment
-exports.removeTreatmentFromAppointment = async (req, res) => {
-  const { appointmentId, treatmentId } = req.params;
-
-
-
-  try {
-    const db = req.db;
-
-    const appointmentTreatment = await db.AppointmentTreatment.findOne({
-      where: { appointmentId, treatmentId }
-    });
-
-    if (!appointmentTreatment) {
-      return res.status(404).json({ message: 'Treatment not found for this appointment' });
+    // Ensure the appointment exists
+    const appointmentExists = await db.Appointment.findByPk(appointmentId);
+    if (!appointmentExists) {
+      return res.status(404).json({ error: 'Appointment not found.' });
     }
 
-    await appointmentTreatment.destroy();
+    // Start a transaction for atomic updates
+    const transaction = await db.sequelize.transaction();
 
-    res.status(200).json({ message: 'Treatment removed from appointment successfully' });
+    try {
+      // Remove all existing treatments for this appointment
+      await db.AppointmentTreatment.destroy({
+        where: { appointmentId },
+        transaction,
+      });
+
+      // Add new treatments
+      const formattedTreatments = treatments.map((treatment) => ({
+        appointmentId,
+        treatmentId: treatment.treatmentId,
+        units: treatment.units,
+        involvedTeeth: treatment.involvedTeeth ? treatment.involvedTeeth.join(',') : null,
+        prescription: treatment.prescription || null,
+        details: treatment.details || null,
+      }));
+
+      await db.AppointmentTreatment.bulkCreate(formattedTreatments, { transaction });
+
+      // Commit the transaction
+      await transaction.commit();
+
+      res.status(200).json({ message: 'Treatments updated successfully.' });
+    } catch (error) {
+      // Rollback the transaction on error
+      await transaction.rollback();
+      throw error;
+    }
   } catch (error) {
-    res.status(500).json({ message: 'Error removing treatment from appointment', error });
+    console.error('Error updating treatments:', error);
+    res.status(500).json({ error: 'Failed to update treatments.' });
   }
 };

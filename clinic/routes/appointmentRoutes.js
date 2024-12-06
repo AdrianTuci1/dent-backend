@@ -8,9 +8,7 @@ const {
   getMedicAppointments,
 } = require('../controllers/appointmentController');
 const {
-  addTreatmentToAppointment,
-  getAllTreatmentsForAppointment,
-  removeTreatmentFromAppointment
+  updateAppointmentTreatments
 } = require('../controllers/appointmentTreatmentController');
 const { getWeekAppointments } = require('../controllers/getWeek');
 const updateMissedAppointments = require('../middleware/updateMissedAppointments'); 
@@ -26,19 +24,13 @@ router.post('/', createAppointment);
 router.get('/:appointmentId',updateMissedAppointments, getAppointmentDetails);
 
 // Update an appointment (subaccount access)
-router.put('/:appointmentId',updateMissedAppointments, updateAppointment);
+router.patch('/:appointmentId',updateMissedAppointments, updateAppointment);
 
 // Delete an appointment (and its treatments) (subaccount access)
 router.delete('/:appointmentId', deleteAppointment);
 
 // Add treatment to an appointment (subaccount access)
-router.post('/:appointmentId/treatments', addTreatmentToAppointment);
-
-// Get all treatments for an appointment (subaccount access)
-router.get('/:appointmentId/treatments', getAllTreatmentsForAppointment);
-
-// Remove treatment from an appointment (subaccount access)
-router.delete('/:appointmentId/treatments/:treatmentId', removeTreatmentFromAppointment);
+router.post('/:appointmentId/treatments', updateAppointmentTreatments);
 
 // Get recent appointments for a patient (with pagination and limit)
 router.get('/patient/:patientId', getPatientAppointments);
