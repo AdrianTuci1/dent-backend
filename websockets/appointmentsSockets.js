@@ -1,78 +1,128 @@
 const WebSocket = require('ws');
-const Sequelize = require('sequelize');
-const initializeClinicDatabase = require('../clinic/models'); // Assuming this initializes the correct database
-const { calculateCurrentWeek } = require('../utils/dateUtils'); // Helper to calculate current week based on timezone
+const { Op } = require('sequelize');
+const initializeClinicDatabase = require('../clinic/models');
+const { calculateCurrentWeek } = require('../utils/dateUtils');
 const { calculateEndHour } = require('../utils/calcultateEndHour');
 
+const connections = new Map();
+
 function setupAppointmentsWebSocket(wss) {
-  // Handle WebSocket upgrade manually for path '/api/appointment-socket'
-  wss.on('connection', (ws, req) => {
-    if (req.url.startsWith('/api/appointment-socket')) {
-      console.log('New client connected to /api/appointment-socket');
+  if (!wss) {
+    throw new Error('WebSocket server instance is undefined');
+  }
 
-      // Handle incoming messages from client
-      ws.on('message', async (message) => {
-        try {
-          const { subdomain, medicUserId } = JSON.parse(message); // Receive subdomain and optionally medicUserId
-          console.log(`Received request: subdomain=${subdomain}, medicUserId=${medicUserId}`);
+  wss.on('connection', (ws) => {
+    const subdomain = ws.subdomain;
 
-          // Initialize the clinic database based on the subdomain
-          const { Appointment, ClinicUser, Treatment } = initializeClinicDatabase(`${subdomain}_db`);
+    if (!subdomain) {
+      ws.close(1008, 'Subdomain is required');
+      return;
+    }
 
-          // Calculate current week for the clinic based on the timezone stored in clinics table
-          const currentWeek = await calculateCurrentWeek(subdomain);
+    console.log(`New WebSocket connection for subdomain: ${subdomain}`);
 
-          // Fetch appointments for the current week based on the clinic's subdomain and optional medicUserId
-          const appointments = await Appointment.findAll({
-            where: {
-              date: {
-                [Sequelize.Op.between]: [currentWeek.startDate, currentWeek.endDate],
-              },
-              ...(medicUserId && { medicUserId }), // Only add medicUserId condition if it's provided
-            },
-            include: [
-              { model: ClinicUser, as: 'medic', attributes: ['name'] },   // Include medic details
-              { model: ClinicUser, as: 'patient', attributes: ['id', 'name'] }, // Include patient details
-              { model: Treatment, as: 'treatments', attributes: ['name', 'color', 'duration'] }, // Include treatment details
-            ],
-            limit: 100,
-          });
+    // Manage connections grouped by subdomain
+    if (!connections.has(subdomain)) {
+      connections.set(subdomain, new Set());
+    }
+    connections.get(subdomain).add(ws);
+    ws.on('message', async (message) => {
+      try {
+        const { medicId, startDate, endDate } = JSON.parse(message);
 
-          // Send each appointment back to the client via WebSocket
-          appointments.forEach((appointment) => {
-            const response = {
-              appointmentId: appointment.appointmentId,
-              status: appointment.status,
-              initialTreatment: appointment.treatments[0]?.name || 'No treatment', // First treatment, if exists
-              color: appointment.treatments[0]?.color || '#FF5733',  // Use default color if none provided
-              startHour: appointment.time,
-              endHour: calculateEndHour(appointment.time, appointment.treatments),
-              date: appointment.date,
-              patientId: appointment.patient.id,
-              patientUser: appointment.patient?.name || 'Unknown',  // Fallback if patient name is missing
-              medicUser: appointment.medic?.name || 'Unknown',      // Fallback if medic name is missing
-            };
-            ws.send(JSON.stringify(response));
-          });
-        } catch (error) {
-          console.error('Error processing WebSocket message:', error);
-          ws.send(JSON.stringify({ error: 'Failed to fetch appointments' }));
+        if (!subdomain) {
+          ws.send(JSON.stringify({ error: 'Subdomain is required' }));
+          return;
+        }
+
+        console.log(`Received request: subdomain=${subdomain}, medicId=${medicId}, startDate=${startDate}, endDate=${endDate}`);
+
+        // Add connection to subdomain group
+        if (!connections.has(subdomain)) {
+          connections.set(subdomain, new Set());
+        }
+        connections.get(subdomain).add(ws);
+
+        const { Appointment, ClinicUser, Treatment } = initializeClinicDatabase(`${subdomain}_db`);
+
+        const currentWeek = await calculateCurrentWeek(subdomain);
+
+        // Determine the date range
+        const dateRange = startDate && endDate
+          ? { [Op.between]: [startDate, endDate] }
+          : { [Op.between]: [currentWeek.startDate, currentWeek.endDate] };
+
+        // Fetch appointments
+        const appointments = await Appointment.findAll({
+          where: {
+            date: dateRange,
+            ...(medicId && { medicUserId: medicId }),
+          },
+          include: [
+            { model: ClinicUser, as: 'medic', attributes: ['id', 'name'] },
+            { model: ClinicUser, as: 'patient', attributes: ['id', 'name'] },
+            { model: Treatment, as: 'treatments', attributes: ['name', 'color', 'duration'] },
+          ],
+        });
+
+        // Send all appointments as a bulk viewAppointments message
+        const response = {
+          type: 'viewAppointments',
+          data: appointments.map((appointment) => ({
+            appointmentId: appointment.appointmentId,
+            status: appointment.status,
+            startHour: appointment.time,
+            endHour: calculateEndHour(appointment.time, appointment.treatments),
+            date: appointment.date,
+            patientId: appointment.patient?.id || null,
+            medicId: appointment.medic?.id || null,
+            patientUser: appointment.patient?.name || 'Unknown',
+            medicUser: appointment.medic?.name || 'Unknown',
+            initialTreatment: appointment.treatments[0]?.name || 'No treatment',
+            color: appointment.treatments[0]?.color || '#FF5733',
+          })),
+        };
+        ws.send(JSON.stringify(response));
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+        ws.send(JSON.stringify({ error: 'Failed to process request' }));
+      }
+    });
+
+    ws.on('close', () => {
+      console.log(`Client disconnected`);
+      connections.forEach((clientSet, subdomain) => {
+        clientSet.delete(ws);
+        if (clientSet.size === 0) {
+          connections.delete(subdomain);
         }
       });
+    });
 
-      // Handle WebSocket disconnection
-      ws.on('close', () => {
-        console.log('Client disconnected from /api/appointment-socket');
-      });
-
-      // Handle WebSocket errors
-      ws.on('error', (error) => {
-        console.error('WebSocket error:', error);
-      });
-    }
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+    });
   });
 }
 
+// Broadcast function for live updates
+function broadcastToSubdomain(subdomain, message) {
+  const clientSet = connections.get(subdomain);
+  if (!clientSet) {
+    console.warn(`No active connections for subdomain: ${subdomain}`);
+    return;
+  }
 
+  const messageString = JSON.stringify(message);
 
-module.exports = setupAppointmentsWebSocket;
+  for (const client of clientSet) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(messageString);
+    }
+  }
+}
+
+module.exports = {
+  setupAppointmentsWebSocket,
+  broadcastToSubdomain,
+};

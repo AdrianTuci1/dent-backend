@@ -1,4 +1,6 @@
 const { Op } = require('sequelize');
+const { broadcastToSubdomain } = require('../../websockets/appointmentsSockets');
+const { calculateEndHour } = require('../../utils/calcultateEndHour');
 
 const generateAppointmentId = async (db) => {
   const currentDate = new Date();
@@ -29,18 +31,18 @@ const generateAppointmentId = async (db) => {
 };
 
 
-exports.createAppointment = async (req, res) => {
+exports.createAppointment = async (req, res, next) => {
   const { date, time, medicId, patientId, treatmentId, units, price } = req.body;
 
+
   try {
-    // Get the clinic-specific database connection
     const db = req.db;
 
     // Generate a new appointment ID
     const appointmentId = await generateAppointmentId(db);
 
     // Create the appointment
-    const appointment = await db.Appointment.create({
+    await db.Appointment.create({
       appointmentId,
       date,
       time,
@@ -50,25 +52,25 @@ exports.createAppointment = async (req, res) => {
       status: 'upcoming',
     });
 
-    // Add initial treatment to AppointmentTreatment
+    // Add treatment if provided
     if (treatmentId) {
       await db.AppointmentTreatment.create({
-        appointmentId: appointment.appointmentId,
+        appointmentId,
         treatmentId,
-        units: units || 1,  // Default to 1 unit if not provided
+        units: units || 1,
       });
     }
 
-    res.status(201).json({
-      message: 'Appointment created successfully',
-      appointment,
-      initialTreatmentId: treatmentId,  // Return the initial treatment ID in the response
-    });
+    // Attach the new appointment ID for broadcasting
+    req.updatedAppointmentId = appointmentId;
+
+    // Pass control to the broadcast middleware
+    next();
   } catch (error) {
-    res.status(500).json({ message: 'Error creating appointment', error });
+    console.error('Error creating appointment:', error);
+    res.status(500).json({ message: 'Error creating appointment', error: error.message });
   }
 };
-
 
 
 // Get Appointment Details including Initial Treatment, Medic, and Patient Information
@@ -158,7 +160,7 @@ exports.getAppointmentDetails = async (req, res) => {
 
 // Update Appointment (PATCH)
 // Assumes req.db is a Sequelize DB connection with Appointment and AppointmentTreatment models
-exports.updateAppointment = async (req, res) => {
+exports.updateAppointment = async (req, res, next) => {
   const { appointmentId } = req.params;
   const {
     date,
@@ -215,25 +217,6 @@ exports.updateAppointment = async (req, res) => {
       }
     }
 
-    // Update status based on isDone and isPaid
-    // If isDone and isPaid => 'done'
-    // If isDone and not isPaid => 'notpaid'
-    // If neither isDone nor isPaid, fallback to status if provided or existing status
-    if (appointment.isDone && !appointment.isPaid) {
-      appointment.status = 'notpaid';
-    } else if (appointment.isDone && appointment.isPaid) {
-      appointment.status = 'done';
-    } else if (appointment.isPaid && !appointment.isDone) {
-      // If only isPaid is true, retain current status unless explicitly changed
-      if ('status' in req.body && status) {
-        appointment.status = status;
-      }
-    } else {
-      // If neither done nor paid
-      if ('status' in req.body && status) {
-        appointment.status = status;
-      }
-    }
 
     await appointment.save();
 
@@ -307,7 +290,10 @@ exports.updateAppointment = async (req, res) => {
       ],
     });
 
-    res.status(200).json({ message: 'Appointment updated successfully', appointment: updatedAppointment });
+    // Attach updated appointment ID for broadcasting
+    req.updatedAppointmentId = appointmentId;
+
+    next(); // Pass control to the next middleware
   } catch (error) {
     console.error('Error updating appointment:', error);
     res.status(500).json({ message: 'Error updating appointment', error: error.message });
@@ -325,6 +311,7 @@ exports.deleteAppointment = async (req, res) => {
   try {
     // Get the clinic-specific database connection
     const db = req.db;
+    const subdomain = req.subdomain;
 
     const appointment = await db.Appointment.findOne({ where: { appointmentId } });
 
@@ -337,6 +324,12 @@ exports.deleteAppointment = async (req, res) => {
 
     // Remove the appointment
     await appointment.destroy();
+
+    // Broadcast the deletion
+    broadcastToSubdomain(subdomain, {
+      type: 'deleteAppointment',
+      data: { appointmentId },
+    });
 
     res.status(200).json({ message: 'Appointment and related treatments deleted successfully' });
   } catch (error) {

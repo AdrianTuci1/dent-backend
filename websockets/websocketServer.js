@@ -1,15 +1,22 @@
+const { WebSocketServer } = require('ws');
+
+let wss = null;
+
+const getWebSocketServer = () => wss;
+
 const WebSocket = require('ws');
 
-// Initialize WebSocket server
-function setupWebSocketServer(server) {
-  const wss = new WebSocket.Server({ server });
+function setupWebSocketServer(httpServer) {
+  // Attach WebSocket server to existing HTTP server
+  const wss = new WebSocket.Server({ server: httpServer });
+
+  console.log('WebSocket server initialized');
 
   wss.on('connection', (ws) => {
     console.log('New WebSocket connection established');
 
-    // Optionally handle global WebSocket logic
     ws.on('message', (message) => {
-      console.log('Message received:', message);
+      console.log('Received WebSocket message:', message);
     });
 
     ws.on('close', () => {
@@ -21,7 +28,8 @@ function setupWebSocketServer(server) {
     });
   });
 
-  return wss;  // Return WebSocket server instance for additional usage
+  return wss;
 }
 
-module.exports = setupWebSocketServer;
+
+module.exports = { setupWebSocketServer, getWebSocketServer };

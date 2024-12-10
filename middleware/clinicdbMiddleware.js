@@ -19,6 +19,7 @@ const clinicDatabaseMiddleware = async (req, res, next) => {
 
     // Attach the database connection to the request object
     req.db = dbCache[clinicDbName];
+    req.subdomain = clinicDbName.replace('_db', ''); // Derive subdomain from database name
 
     next(); // Proceed to the next middleware or controller
   } catch (error) {

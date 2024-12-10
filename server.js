@@ -2,78 +2,64 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const db = require('./main/models');  // Import Sequelize models
-
-
- // const mainRoutes = require('./main/routes/clinicRoutes');
-const clinicRoutes = require('./clinic/routes/index')
-
+const { setupAppointmentsWebSocket } = require('./websockets/appointmentsSockets');
+const clinicRoutes = require('./clinic/routes/index');
 const http = require('http');
 const WebSocket = require('ws');
-const setupAppointmentsWebSocket = require('./websockets/appointmentsSockets');
+const url = require('url');
 
-// Load environment variables from .env file
 dotenv.config();
 
-// Initialize Express app
 const app = express();
 
-// Use CORS middleware (apply to all routes by default)
 const corsOptions = {
-  origin: ['http://localhost:5173'], // Adjust as needed
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],  // Allowed methods
-  credentials: true,  // If using cookies or authentication headers
+  origin: ['http://localhost:5173'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  credentials: true,
 };
 app.use(cors(corsOptions));
-
-// Middleware to parse JSON requests
 app.use(express.json());
 
 const server = http.createServer(app);
 
-// Define routes
-app.use('/api', clinicRoutes);     // for clinic specific operations
+app.use('/api', clinicRoutes);
 
-
-// Home route for testing
 app.get('/', (req, res) => {
   res.send('Welcome to the Dentms API');
 });
 
-// Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).send('Something broke!');
 });
 
-// Connect to the PostgreSQL database, sync models, and start the server
 const PORT = process.env.PORT || 3000;
 
 db.sequelize.authenticate()
   .then(() => {
     console.log('Database connected successfully');
-    
-    // Sync the database models
-    return db.syncMainDatabase();  // Ensure this syncs the database properly
+    return db.syncMainDatabase();
   })
   .then(() => {
-    // Web Sockets - Initialize the WebSocket server after database is ready
     const wss = new WebSocket.Server({ noServer: true });
 
-    // Handle WebSocket upgrades only for the appointment socket path
+    setupAppointmentsWebSocket(wss);
+
     server.on('upgrade', (request, socket, head) => {
-      if (request.url === '/api/appointment-socket') {
+      const { query } = url.parse(request.url, true);
+      const subdomain = query.subdomain;
+
+      if (request.url.startsWith('/api/appointment-socket') && subdomain) {
         wss.handleUpgrade(request, socket, head, (ws) => {
+          // Attach the subdomain to the WebSocket for later use
+          ws.subdomain = subdomain;
           wss.emit('connection', ws, request);
         });
       } else {
-        socket.destroy();  // Destroy any connection that does not match the WebSocket path
+        socket.destroy();
       }
     });
 
-    // Set up WebSocket for appointments
-    setupAppointmentsWebSocket(wss);
-
-    // Start the HTTP server after WebSocket is set up
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });

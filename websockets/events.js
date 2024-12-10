@@ -1,22 +1,37 @@
-function broadcast(wss, message) {
-    // Broadcast message to all connected clients
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(message));
-      }
-    });
-  }
-  
-  function handleCustomEvents(wss, event, data) {
-    switch (event) {
-      case 'APPOINTMENT_UPDATED':
-        broadcast(wss, { type: 'APPOINTMENT_UPDATED', data });
-        break;
-      // Add more events as needed
-      default:
-        console.log(`Unhandled event: ${event}`);
+function handleCustomEvents(wss, clients) {
+  const broadcastToSubdomain = (subdomain, event) => {
+    if (clients.has(subdomain)) {
+      clients.get(subdomain).forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify(event));
+        }
+      });
     }
-  }
-  
-  module.exports = { broadcast, handleCustomEvents };
-  
+  };
+
+  // Create Appointment Event
+  wss.on('createAppointment', (subdomain, appointment) => {
+    broadcastToSubdomain(subdomain, {
+      type: 'createAppointment',
+      data: appointment,
+    });
+  });
+
+  // Edit Appointment Event
+  wss.on('editAppointment', (subdomain, appointment) => {
+    broadcastToSubdomain(subdomain, {
+      type: 'editAppointment',
+      data: appointment,
+    });
+  });
+
+  // Delete Appointment Event
+  wss.on('deleteAppointment', (subdomain, appointmentId) => {
+    broadcastToSubdomain(subdomain, {
+      type: 'deleteAppointment',
+      data: { appointmentId },
+    });
+  });
+}
+
+module.exports = { handleCustomEvents };
