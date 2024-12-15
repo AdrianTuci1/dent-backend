@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
-const { broadcastToSubdomain } = require('../../websockets/appointmentsSockets');
-const { calculateEndHour } = require('../../utils/calcultateEndHour');
+const { getAppointments, deleteAppointment } = require('../../websockets/appointmentsState');
+const { broadcastToSubdomain } = require('../../websockets/broadcast');
 
 const generateAppointmentId = async (db) => {
   const currentDate = new Date();
@@ -168,7 +168,6 @@ exports.updateAppointment = async (req, res, next) => {
     medicId,
     patientId,
     price,
-    status, // Optional: can be overridden by logic below
     treatments, // Optional array of treatments
     isDone,
     isPaid,
@@ -272,24 +271,6 @@ exports.updateAppointment = async (req, res, next) => {
       }
     }
 
-    // Fetch the updated appointment with treatments
-    const updatedAppointment = await db.Appointment.findOne({
-      where: { appointmentId },
-      include: [
-        {
-          model: db.AppointmentTreatment,
-          as: 'AppointmentTreatments',
-          include: [
-            {
-              model: db.Treatment,
-              as: 'treatmentDetails',
-              attributes: ['name', 'color'],
-            },
-          ],
-        },
-      ],
-    });
-
     // Attach updated appointment ID for broadcasting
     req.updatedAppointmentId = appointmentId;
 
@@ -325,10 +306,14 @@ exports.deleteAppointment = async (req, res) => {
     // Remove the appointment
     await appointment.destroy();
 
-    // Broadcast the deletion
+    // Update the in-memory state
+    deleteAppointment(subdomain, appointmentId);
+
+    // Broadcast the updated appointments list
     broadcastToSubdomain(subdomain, {
-      type: 'deleteAppointment',
-      data: { appointmentId },
+      type: 'appointments',
+      action: 'view',
+      data: getAppointments(subdomain),
     });
 
     res.status(200).json({ message: 'Appointment and related treatments deleted successfully' });

@@ -1,10 +1,7 @@
-const { Op, Sequelize } = require('sequelize'); // Include Sequelize for literals
+const { Op, Sequelize } = require('sequelize');
 
-const updateMissedAppointments = async (req, res, next) => {
+const updateMissedAppointmentsForSocket = async (db) => {
   try {
-    // Get the clinic-specific database connection
-    const db = req.db;
-
     // Get the current date and time
     const currentDateTime = new Date();
 
@@ -30,11 +27,12 @@ const updateMissedAppointments = async (req, res, next) => {
     // Log the number of updated appointments
     console.log(`Updated ${missedAppointments.length} appointments to 'missed'.`);
 
-    next(); // Proceed to the next middleware or controller
+    // Optionally return the updated appointments
+    return missedAppointments;
   } catch (error) {
     console.error('Error updating missed appointments:', error);
-    res.status(500).json({ message: 'Error updating missed appointments', error: error.message });
+    throw error; // Propagate the error for the caller to handle
   }
 };
 
-module.exports = updateMissedAppointments;
+module.exports = updateMissedAppointmentsForSocket;

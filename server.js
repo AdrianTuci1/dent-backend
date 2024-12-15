@@ -1,9 +1,11 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+
 const db = require('./main/models');  // Import Sequelize models
-const { setupAppointmentsWebSocket } = require('./websockets/appointmentsSockets');
+const { setupAppointmentsWebSocket } = require('./websockets/websocket');
 const clinicRoutes = require('./clinic/routes/index');
+
 const http = require('http');
 const WebSocket = require('ws');
 const url = require('url');
@@ -24,11 +26,11 @@ const server = http.createServer(app);
 
 app.use('/api', clinicRoutes);
 
-app.get('/', (req, res) => {
+app.get('/', (res) => {
   res.send('Welcome to the Dentms API');
 });
 
-app.use((err, req, res, next) => {
+app.use((err, res) => {
   console.error(err.stack);
   res.status(500).send('Something broke!');
 });
