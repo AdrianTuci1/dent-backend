@@ -405,65 +405,30 @@ exports.getPatientAppointments = async (req, res) => {
 
 
 
-// Controller to get appointments for both today and the next 20 upcoming appointments (excluding today)
+        
+// Controller to get the next 10 appointments for a specific medic or all medics
 exports.getMedicAppointments = async (req, res) => {
   const { medicId } = req.params; // medicId can be optional
 
-
   try {
     const db = req.db;
-    const { today, tomorrow } = getTodayRange();  // Get today's start and end times
+    const { today } = getTodayRange(); // Get the start of today
 
-    // Define the conditions for today and upcoming appointments
-    const whereConditionToday = {
+    // Define the condition for upcoming appointments (including today)
+    const whereCondition = {
       date: {
-        [Op.gte]: today,
-        [Op.lt]: tomorrow,
+        [Op.gte]: today, // Start from today
       },
     };
 
-    const whereConditionUpcoming = {
-      date: {
-        [Op.gt]: today,
-      },
-    };
-
-    // If medicId is provided, restrict the query to that medic's appointments
+    // If medicId is provided, filter appointments by medic
     if (medicId) {
-      whereConditionToday.medicUser = medicId;
-      whereConditionUpcoming.medicUser = medicId;
+      whereCondition.medicUser = medicId;
     }
 
-    // Fetch today's appointments (from all medics or specific medic if medicId is provided)
-    const todaysAppointments = await db.Appointment.findAll({
-      where: whereConditionToday,
-      include: [
-        {
-          model: db.ClinicUser,
-          as: 'medic', // Include medic details
-          attributes: ['id', 'name'],
-        },
-        {
-          model: db.ClinicUser,
-          as: 'patient', // Include patient details
-          attributes: ['id', 'name'],
-        },
-        {
-          model: db.AppointmentTreatment,
-          as: 'AppointmentTreatments', // Use alias for AppointmentTreatment
-          include: {
-            model: db.Treatment,
-            as: 'treatmentDetails', // Fetch treatment details
-            attributes: ['name', 'color'],
-          },
-        },
-      ],
-      order: [['time', 'ASC']], // Sort by time
-    });
-
-    // Fetch the next 20 upcoming appointments (from all medics or specific medic if medicId is provided)
+    // Fetch the next 10 upcoming appointments
     const upcomingAppointments = await db.Appointment.findAll({
-      where: whereConditionUpcoming,
+      where: whereCondition,
       include: [
         {
           model: db.ClinicUser,
@@ -477,7 +442,7 @@ exports.getMedicAppointments = async (req, res) => {
         },
         {
           model: db.AppointmentTreatment,
-          as: 'AppointmentTreatments', // Use alias for AppointmentTreatment
+          as: 'AppointmentTreatments', // Include treatments
           include: {
             model: db.Treatment,
             as: 'treatmentDetails', // Fetch treatment details
@@ -485,12 +450,12 @@ exports.getMedicAppointments = async (req, res) => {
           },
         },
       ],
-      limit: 20, // Limit to the next 20 appointments
-      order: [['date', 'ASC'], ['time', 'ASC']], // Sort by date, then by time
+      limit: 10, // Limit to 10 appointments
+      order: [['date', 'ASC'], ['time', 'ASC']], // Sort by date, then time
     });
 
-    // Format today's appointments
-    const formattedTodaysAppointments = todaysAppointments.map((appointment) => ({
+    // Format the response
+    const formattedAppointments = upcomingAppointments.map((appointment) => ({
       appointmentId: appointment.appointmentId,
       date: appointment.date,
       time: appointment.time,
@@ -503,33 +468,17 @@ exports.getMedicAppointments = async (req, res) => {
         name: appointment.medic.name,
       },
       initialTreatment: appointment.AppointmentTreatments[0]?.treatmentDetails?.name || null, // Get the initial treatment
-      color: appointment.AppointmentTreatments[0]?.treatmentDetails?.color || '#34abeb',
+      color: appointment.AppointmentTreatments[0]?.treatmentDetails?.color || '#34abeb', // Default color
     }));
 
-    // Format upcoming appointments
-    const formattedUpcomingAppointments = upcomingAppointments.map((appointment) => ({
-      appointmentId: appointment.appointmentId,
-      date: appointment.date,
-      time: appointment.time,
-      patientUser: {
-        id: appointment.patient.id,
-        name: appointment.patient.name,
-      },
-      medicUser: {
-        id: appointment.medic.id,
-        name: appointment.medic.name,
-      },
-      initialTreatment: appointment.AppointmentTreatments[0]?.treatmentDetails?.name || null, // Get the initial treatment
-      color: appointment.AppointmentTreatments[0]?.treatmentDetails?.color || '#34abeb',
-    }));
-
+    // Return the appointments
     res.status(200).json({
-      today: formattedTodaysAppointments,
-      upcoming: formattedUpcomingAppointments,
-      message: 'Appointments fetched successfully',
+      appointments: formattedAppointments,
+      message: 'Next 10 appointments fetched successfully',
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching medic appointments', error: error.message });
+    console.error('Error fetching appointments:', error);
+    res.status(500).json({ message: 'Error fetching appointments', error: error.message });
   }
 };
 

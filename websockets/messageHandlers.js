@@ -3,6 +3,25 @@ const { calculateEndHour } = require('../utils/calcultateEndHour');
 const { calculateCurrentWeek } = require('../utils/dateUtils');
 const { Op } = require('sequelize');
 const initializeClinicDatabase = require('../clinic/models');
+const updateMissedAppointmentsForSocket = require('../clinic/middleware/updateMissedAppointments')
+
+const databaseCache = {}; // Cache for database connections
+
+/**
+ * Get cached database or initialize if not already cached
+ * @param {string} subdomain - The subdomain to fetch the database for
+ * @returns {Object} - The initialized database models
+ */
+
+function getCachedDatabase(subdomain) {
+  if (!databaseCache[subdomain]) {
+    console.log(`Initializing database for subdomain: ${subdomain}`);
+    databaseCache[subdomain] = initializeClinicDatabase(`${subdomain}_db`);
+  } else {
+    console.log(`Using cached database for subdomain: ${subdomain}`);
+  }
+  return databaseCache[subdomain];
+}
 
 async function handleMessage(ws, message) {
   try {
@@ -16,7 +35,13 @@ async function handleMessage(ws, message) {
 
     console.log(`Handling message for subdomain: ${subdomain}`);
 
-    const { Appointment, ClinicUser, Treatment } = initializeClinicDatabase(`${subdomain}_db`);
+    const db = getCachedDatabase(subdomain);
+
+    const { Appointment, ClinicUser, Treatment } = db;
+
+
+    // Ensure all missed appointments are updated
+    await updateMissedAppointmentsForSocket(db);
 
     // Directly handle "view" since all frontend requests are for viewing data
     await handleViewAppointments(ws, subdomain, Appointment, ClinicUser, Treatment, message);

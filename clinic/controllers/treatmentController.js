@@ -1,4 +1,4 @@
-
+const { Op } = require('sequelize');
 
 //Create new Treatment
 exports.createTreatment = async (req, res) => {
@@ -64,19 +64,38 @@ exports.createTreatment = async (req, res) => {
 
 
 
-// Get All Treatments
+// Get All Treatments with search and pagination
 exports.getAllTreatments = async (req, res) => {
-
-
   try {
     const db = req.db;
 
-    const treatments = await db.Treatment.findAll();
-    res.status(200).json({ treatments });
+    // Extract query parameters for search and pagination
+    const { name = '', offset = 0 } = req.query; // Default: empty search, offset = 0
+    const limit = 20; // Limit results to 20 per request
+
+    // Fetch treatments with optional search and pagination
+    const treatments = await db.Treatment.findAll({
+      where: {
+        name: {
+          [Op.like]: `%${name}%`, // Search treatments by name
+        },
+      },
+      limit: limit,
+      offset: parseInt(offset),
+      order: [['name', 'ASC']], // Optional: Sort alphabetically by name
+    });
+
+    res.status(200).json({
+      treatments,
+      limit,
+      offset: parseInt(offset) + limit, // Return the next offset for the client
+    });
   } catch (error) {
+    console.error('Error fetching treatments:', error);
     res.status(500).json({ message: 'Error fetching treatments', error });
   }
 };
+
 
 
 //Update Treatment by ID

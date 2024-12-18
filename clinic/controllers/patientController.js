@@ -1,79 +1,95 @@
-
+const { Op } = require('sequelize');
 
 const getPatients = async (req, res) => {
-    try {
-      const db = req.db;
-      
-      if (!db || !db.ClinicUser) {
-        return res.status(500).json({ message: 'Database connection or model not available' });
-      }
-  
-      const clinicUsers = await db.ClinicUser.findAll({
-        include: [
-          {
-            model: db.Patient,
-            as: 'patientProfile', 
-            attributes: ['id', 'gender', 'age', 'paymentsMade', 'labels'],
-          },
-          {
-            model: db.Appointment,
-            as: 'patientAppointments',
-            attributes: ['appointmentId', 'date', 'time'],
-          }
-        ],
-        attributes: ['id', 'name', 'email', 'role', 'photo'],
-      });
-  
-      const currentTime = new Date();
-  
-      const dataWithAppointments = await Promise.all(clinicUsers
-        .filter(clinicUser => clinicUser.patientProfile)  // Only include users with a patient profile
-        .map(async (clinicUser) => {
+  try {
+    const db = req.db;
+
+    if (!db || !db.ClinicUser) {
+      return res.status(500).json({ message: 'Database connection or model not available' });
+    }
+
+    // Extract query parameters for search and pagination
+    const { name = '', offset = 0 } = req.query; // Default: empty search, offset = 0
+    const limit = 20; // Results limited to 20 per request
+
+    // Query clinic users with search and pagination
+    const clinicUsers = await db.ClinicUser.findAll({
+      include: [
+        {
+          model: db.Patient,
+          as: 'patientProfile',
+          attributes: ['id', 'gender', 'age', 'paymentsMade', 'labels'],
+        },
+        {
+          model: db.Appointment,
+          as: 'patientAppointments',
+          attributes: ['appointmentId', 'date', 'time'],
+        },
+      ],
+      where: {
+        name: {
+          [Op.like]: `%${name}%`, // Search by name (case-insensitive match)
+        },
+      },
+      attributes: ['id', 'name', 'email', 'role', 'photo'],
+      limit: limit,
+      offset: parseInt(offset), // Offset for "Load More" functionality
+    });
+
+    const currentTime = new Date();
+
+    // Process appointments and build the response data
+    const dataWithAppointments = await Promise.all(
+      clinicUsers
+        .filter(clinicUser => clinicUser.patientProfile) // Include only users with a patient profile
+        .map(async clinicUser => {
           const pastAppointments = clinicUser.patientAppointments
             .filter(app => new Date(`${app.date}T${app.time}`) < currentTime)
             .sort((a, b) => new Date(b.date + 'T' + b.time) - new Date(a.date + 'T' + a.time));
-  
+
           const futureAppointments = clinicUser.patientAppointments
             .filter(app => new Date(`${app.date}T${app.time}`) >= currentTime)
-            .sort((a, b) => new Date(a.date + 'T' + a.time) - new Date(b.date + 'T' + b.time));
-  
+            .sort((a, b) => new Date(a.date + 'T' + a.time) - new Date(b.date + 'T' + a.time));
+
           let previousAppointment = null;
           let nextAppointment = null;
-  
+
+          // Fetch previous appointment's treatment details
           if (pastAppointments[0]) {
             const appointmentTreatment = await db.AppointmentTreatment.findOne({
-              where: { appointmentId: pastAppointments[0].appointmentId }
+              where: { appointmentId: pastAppointments[0].appointmentId },
             });
-  
+
             if (appointmentTreatment) {
               const treatment = await db.Treatment.findOne({
                 where: { id: appointmentTreatment.treatmentId },
-                attributes: ['name']
+                attributes: ['name'],
               });
               previousAppointment = {
                 ...pastAppointments[0].dataValues,
-                treatmentName: treatment ? treatment.name : null
+                treatmentName: treatment ? treatment.name : null,
               };
             }
           }
-  
+
+          // Fetch next appointment's treatment details
           if (futureAppointments[0]) {
             const appointmentTreatment = await db.AppointmentTreatment.findOne({
-              where: { appointmentId: futureAppointments[0].appointmentId }
+              where: { appointmentId: futureAppointments[0].appointmentId },
             });
-  
+
             if (appointmentTreatment) {
               const treatment = await db.Treatment.findOne({
                 where: { id: appointmentTreatment.treatmentId },
-                attributes: ['name']
+                attributes: ['name'],
               });
               nextAppointment = {
                 ...futureAppointments[0].dataValues,
-                treatmentName: treatment ? treatment.name : null
+                treatmentName: treatment ? treatment.name : null,
               };
             }
           }
-  
+
           return {
             id: clinicUser.id,
             name: clinicUser.name,
@@ -91,14 +107,14 @@ const getPatients = async (req, res) => {
             nextAppointment,
           };
         })
-      );
-  
-      res.status(200).json(dataWithAppointments);
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Error retrieving clinic users and patients' });
-    }
-  };
+    );
+
+    res.status(200).json({ data: dataWithAppointments, limit, offset: parseInt(offset) + limit });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error retrieving clinic users and patients' });
+  }
+};
 
 
 

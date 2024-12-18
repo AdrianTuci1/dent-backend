@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 
 // Create Component
 exports.createComponent = async (req, res) => {
@@ -19,19 +20,38 @@ exports.createComponent = async (req, res) => {
   }
 };
 
-// Get All Components
+// Get All Components with search and pagination
 exports.getAllComponents = async (req, res) => {
-
-
   try {
     const db = req.db;
 
-    const components = await db.Component.findAll();
-    res.status(200).json({ components });
+    // Extract query parameters for search and pagination
+    const { name = '', offset = 0 } = req.query; // Default values: name is empty, offset = 0
+    const limit = 20; // Limit results to 20
+
+    // Fetch components with search and pagination
+    const components = await db.Component.findAll({
+      where: {
+        componentName: {
+          [Op.like]: `%${name}%`, // Search by name (case-insensitive partial match)
+        },
+      },
+      limit: limit,
+      offset: parseInt(offset),
+      order: [['componentName', 'ASC']], // Sort components alphabetically
+    });
+
+    res.status(200).json({
+      components,
+      limit,
+      offset: parseInt(offset) + limit, // Return next offset for "Load More"
+    });
   } catch (error) {
+    console.error('Error fetching components:', error);
     res.status(500).json({ message: 'Error fetching components', error });
   }
 };
+
 
 // Update Component
 exports.updateComponent = async (req, res) => {
