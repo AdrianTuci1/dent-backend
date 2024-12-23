@@ -201,6 +201,7 @@ const initializeClinicDatabase = (dbName) => {
   });
 
 
+
     // ClinicUser hasMany PatientRequests as both patient and medic
   PatientRequest.belongsTo(ClinicUser, { foreignKey: 'patient_id', as: 'patient' });
   ClinicUser.hasMany(PatientRequest, { foreignKey: 'patient_id', as: 'requestsByPatient' });
@@ -217,8 +218,8 @@ const initializeClinicDatabase = (dbName) => {
   ClinicAvailability.hasMany(AvailabilitySlots, { foreignKey: 'clinic_availability_id', as: 'availabilitySlots' });
 
   // If using DentalHistory model
-  Patient.hasMany(DentalHistory, { foreignKey: 'patientId', as: 'dentalHistories' });
-  DentalHistory.belongsTo(Patient, { foreignKey: 'patientId', as: 'patient' });
+  ClinicUser.hasMany(DentalHistory, { foreignKey: 'patientId', as: 'dentalHistories' });
+  DentalHistory.belongsTo(ClinicUser, { foreignKey: 'patientId', as: 'patient' });
 
   // Sync the database
   const syncClinicDatabase = async () => {
@@ -240,7 +241,7 @@ const initializeClinicDatabase = (dbName) => {
     Component,
     AppointmentTreatment,
     TreatmentComponent,
-    DentalHistory, // If using
+    DentalHistory, 
     Category,
     Permission,
     ClinicUserPermission,

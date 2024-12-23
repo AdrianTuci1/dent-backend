@@ -98,14 +98,16 @@ exports.getAllTreatments = async (req, res) => {
 
 
 
-//Update Treatment by ID
+
+// Update Treatment by ID
 exports.updateTreatment = async (req, res) => {
   const { treatmentId } = req.params;
-  const { name, category, description, duration, price, componentIds, componentUnits, color } = req.body;
+  const { name, category, description, duration, price, components, color } = req.body; // Use components directly
 
   try {
     const db = req.db;
 
+    // Start a transaction
     const transaction = await db.clinicSequelize.transaction();
 
     try {
@@ -113,46 +115,57 @@ exports.updateTreatment = async (req, res) => {
       const treatment = await db.Treatment.findOne({ where: { id: treatmentId }, transaction });
 
       if (!treatment) {
+        await transaction.rollback();
         return res.status(404).json({ message: 'Treatment not found' });
       }
 
+      // Validate components array
+      if (!Array.isArray(components)) {
+        await transaction.rollback();
+        return res.status(400).json({ message: '`components` must be an array' });
+      }
+
       // Update treatment fields
-      await treatment.update({
-        name,
-        category,
-        description,
-        duration,
-        price,
-        color,
-      }, { transaction });
+      await treatment.update(
+        {
+          name,
+          category,
+          description,
+          duration,
+          price,
+          color,
+        },
+        { transaction }
+      );
 
       // Clear the existing component associations
       await db.TreatmentComponent.destroy({ where: { treatmentId }, transaction });
 
-      // Prepare the new data for components with updated componentUnits
-      const treatmentComponentsData = componentIds.map((componentId, index) => ({
+      // Prepare the new data for components
+      const treatmentComponentsData = components.map((comp) => ({
         treatmentId,
-        componentId,
-        componentsUnits: componentUnits[index],
+        componentId: comp.id, // Extract `id` for componentId
+        componentUnits: comp.componentUnits, // Extract `componentUnits`
       }));
 
-      // Log the data to verify it's structured correctly
-      console.log("Updated Treatment Components Data:", treatmentComponentsData);
+      // Log the data to verify structure
+      console.log('Updated Treatment Components Data:', treatmentComponentsData);
 
       // Add updated components to the treatment
       await db.TreatmentComponent.bulkCreate(treatmentComponentsData, { transaction });
 
-      // Commit the transaction if all is successful
+      // Commit the transaction
       await transaction.commit();
 
       res.status(200).json({ message: 'Treatment updated successfully', treatment });
     } catch (error) {
+      // Rollback the transaction on error
       await transaction.rollback();
-      console.error("Error during update transaction:", error);
+      console.error('Error during update transaction:', error);
       res.status(500).json({ message: 'Error updating treatment', error: error.message });
     }
   } catch (error) {
-    console.error("Error initializing database for update:", error);
+    console.error('Error initializing database for update:', error);
     res.status(500).json({ message: 'Error initializing database', error: error.message });
   }
 };

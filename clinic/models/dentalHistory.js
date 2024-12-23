@@ -1,29 +1,41 @@
-// models/dentalHistory.js
 module.exports = (sequelize, DataTypes) => {
-    const DentalHistory = sequelize.define('DentalHistory', {
-      id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
+  const DentalHistory = sequelize.define('DentalHistory', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    patientId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Patients', // Ensures the relationship with the Patients table
+        key: 'id',
       },
-      patientId: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-          model: 'Patients',
-          key: 'id',
-        },
-      },
-      toothNumber: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      treatments: {
-        type: DataTypes.ARRAY(DataTypes.STRING), // List of Treatment IDs
-        allowNull: true,
-      },
+    },
+    toothNumber: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    condition: {
+      type: DataTypes.STRING, // Example: 'sound', 'cavity', 'extracted', etc.
+      allowNull: false,
+      defaultValue: 'sound',
+    },
+    history: {
+      type: DataTypes.JSONB, // Store detailed history as structured data
+      allowNull: true,
+      defaultValue: [],
+    },
+  });
+
+  // Define associations if needed
+  DentalHistory.associate = (models) => {
+    DentalHistory.belongsTo(models.Patient, {
+      foreignKey: 'patientId',
+      as: 'patient',
     });
-  
-    return DentalHistory;
   };
-  
+
+  return DentalHistory;
+};

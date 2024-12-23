@@ -7,7 +7,7 @@ const createAppointments = async (models, patientUser, medicUser, medicUser2, me
   const appointmentsData = [
     {
       appointmentId: 'AP0001',
-      date: '2024-12-08',
+      date: '2024-12-20',
       time: '10:00',
       isDone: false,
       status: 'upcoming',
@@ -18,7 +18,7 @@ const createAppointments = async (models, patientUser, medicUser, medicUser2, me
     },
     {
       appointmentId: 'AP0002',
-      date: '2024-12-09',
+      date: '2024-12-20',
       time: '11:30',
       isDone: false,
       status: 'upcoming',
@@ -29,7 +29,7 @@ const createAppointments = async (models, patientUser, medicUser, medicUser2, me
     },
     {
       appointmentId: 'AP0003',
-      date: '2024-12-10',
+      date: '2024-12-21',
       time: '09:00',
       isDone: false,
       status: 'upcoming',
@@ -40,7 +40,7 @@ const createAppointments = async (models, patientUser, medicUser, medicUser2, me
     },
     {
       appointmentId: 'AP0004',
-      date: '2024-12-12',
+      date: '2024-12-22',
       time: '14:00',
       isDone: false,
       status: 'upcoming',
@@ -51,7 +51,7 @@ const createAppointments = async (models, patientUser, medicUser, medicUser2, me
     },
     {
       appointmentId: 'AP0005',
-      date: '2024-12-13',
+      date: '2024-12-23',
       time: '15:00',
       isDone: false,
       status: 'upcoming',
@@ -63,7 +63,7 @@ const createAppointments = async (models, patientUser, medicUser, medicUser2, me
         // Appointments for medicUser2
     {
       appointmentId: 'AP0006',
-      date: '2024-12-14',
+      date: '2024-12-23',
       time: '09:00',
       isDone: false,
       status: 'upcoming',
@@ -74,7 +74,7 @@ const createAppointments = async (models, patientUser, medicUser, medicUser2, me
     },
     {
       appointmentId: 'AP0007',
-      date: '2024-12-15',
+      date: '2024-12-25',
       time: '12:30',
       isDone: false,
       status: 'upcoming',
@@ -85,7 +85,7 @@ const createAppointments = async (models, patientUser, medicUser, medicUser2, me
     },
     {
       appointmentId: 'AP0008',
-      date: '2024-12-17',
+      date: '2024-12-26',
       time: '10:00',
       isDone: false,
       status: 'upcoming',
@@ -96,7 +96,7 @@ const createAppointments = async (models, patientUser, medicUser, medicUser2, me
     },
     {
       appointmentId: 'AP0009',
-      date: '2024-12-20',
+      date: '2024-12-27',
       time: '14:30',
       isDone: false,
       status: 'upcoming',
@@ -108,7 +108,7 @@ const createAppointments = async (models, patientUser, medicUser, medicUser2, me
     // Appointments for medicUser3
     {
       appointmentId: 'AP0010',
-      date: '2024-12-21',
+      date: '2024-12-24',
       time: '08:30',
       isDone: false,
       status: 'upcoming',
@@ -119,7 +119,7 @@ const createAppointments = async (models, patientUser, medicUser, medicUser2, me
     },
     {
       appointmentId: 'AP0011',
-      date: '2024-12-23',
+      date: '2024-12-28',
       time: '11:00',
       isDone: false,
       status: 'upcoming',
@@ -130,7 +130,7 @@ const createAppointments = async (models, patientUser, medicUser, medicUser2, me
     },
     {
       appointmentId: 'AP0012',
-      date: '2024-12-21',
+      date: '2024-12-25',
       time: '09:00',
       isDone: false,
       status: 'upcoming',
@@ -141,7 +141,7 @@ const createAppointments = async (models, patientUser, medicUser, medicUser2, me
     },
     {
       appointmentId: 'AP0013',
-      date: '2024-12-14',
+      date: '2024-12-29',
       time: '14:30',
       isDone: false,
       status: 'upcoming',
