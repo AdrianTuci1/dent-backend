@@ -63,11 +63,12 @@ const getPatients = async (req, res) => {
             if (appointmentTreatment) {
               const treatment = await db.Treatment.findOne({
                 where: { id: appointmentTreatment.treatmentId },
-                attributes: ['name'],
+                attributes: ['name', 'color'],
               });
               previousAppointment = {
                 ...pastAppointments[0].dataValues,
                 treatmentName: treatment ? treatment.name : null,
+                color: treatment ? treatment.color : null,
               };
             }
           }
@@ -81,11 +82,12 @@ const getPatients = async (req, res) => {
             if (appointmentTreatment) {
               const treatment = await db.Treatment.findOne({
                 where: { id: appointmentTreatment.treatmentId },
-                attributes: ['name'],
+                attributes: ['name', 'color'],
               });
               nextAppointment = {
                 ...futureAppointments[0].dataValues,
                 treatmentName: treatment ? treatment.name : null,
+                color: treatment? treatment.color : null,
               };
             }
           }
@@ -125,13 +127,13 @@ const getPatients = async (req, res) => {
       
       const { ClinicUser, Patient } = db;
 
-      const { email, name, password, age, gender, phone, address, labels, notes } = req.body;
+      const { email, name, age, gender, phone, address, labels, notes } = req.body;
 
       // Create ClinicUser
       const newUser = await ClinicUser.create({
         email,
         name,
-        password,
+        password: 'password',
         role: 'patient', // Role set as patient
         photo: 'path/to/patient_photo.jpg',
       });

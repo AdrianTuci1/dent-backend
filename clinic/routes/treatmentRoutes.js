@@ -1,5 +1,5 @@
 const express = require('express');
-const { createTreatment, getAllTreatments, updateTreatment, deleteTreatment, getTreatmentById, getTreatmentsByCategory } = require('../controllers/treatmentController');
+const { createTreatment, getAllTreatments, updateTreatment, deleteTreatment, getTreatmentById } = require('../controllers/treatmentController');
 
 const router = express.Router();
 
@@ -8,10 +8,6 @@ router.post('/', createTreatment);
 
 // Get all treatments
 router.get('/', getAllTreatments);
-
-// Get treatments by Cateogry
-
-router.get('/category', getTreatmentsByCategory)
 
 // Get treatment by ID
 router.get('/:treatmentId', getTreatmentById)

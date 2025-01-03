@@ -8,7 +8,6 @@ const componentModel = require('./component');
 const appointmentTreatmentModel = require('./appointmentTreatment');
 const treatmentComponentModel = require('./treatmentComponent');
 const dentalHistoryModel = require('./dentalHistory'); // If using
-const categoryModel = require('./category')
 const permissionModel = require('./permission');
 const clinicUserPermissionModel = require('./clinicUserPermission');
 const workingDaysHoursModel = require('./workingDaysHours')
@@ -33,7 +32,6 @@ const initializeClinicDatabase = (dbName) => {
   const AppointmentTreatment = appointmentTreatmentModel(clinicSequelize, Sequelize.DataTypes);
   const TreatmentComponent = treatmentComponentModel(clinicSequelize, Sequelize.DataTypes);
   const DentalHistory = dentalHistoryModel(clinicSequelize, Sequelize.DataTypes); // If using
-  const Category = categoryModel(clinicSequelize, Sequelize.DataTypes);
   const Permission = permissionModel(clinicSequelize, Sequelize.DataTypes);
   const ClinicUserPermission = clinicUserPermissionModel(clinicSequelize, Sequelize.DataTypes);
   const WorkingDaysHours = workingDaysHoursModel(clinicSequelize, Sequelize.DataTypes);
@@ -242,7 +240,6 @@ const initializeClinicDatabase = (dbName) => {
     AppointmentTreatment,
     TreatmentComponent,
     DentalHistory, 
-    Category,
     Permission,
     ClinicUserPermission,
     WorkingDaysHours,

@@ -1,14 +1,11 @@
 const express = require('express');
-const { createCategory, getCategories, deleteCategory } = require('../controllers/categoryController');
+const { getTreatmentsByCategory, getUniqueCategories } = require('../controllers/categoryController');
 const router = express.Router();
 
-// Add a new category
-router.post('/', createCategory);
+// Get all categories with treatments
+router.get('/', getTreatmentsByCategory);
 
-// Get all categories
-router.get('/', getCategories);
-
-// Delete a category
-router.delete('/:categoryId', deleteCategory);
+// Get only category names
+router.get('/look', getUniqueCategories);
 
 module.exports = router;

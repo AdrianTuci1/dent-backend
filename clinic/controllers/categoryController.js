@@ -1,51 +1,60 @@
+const { Op, fn, col } = require('sequelize');
 
+// Controller to get treatments sorted by category
+exports.getTreatmentsByCategory = async (req, res) => {
 
-// Create a new category
-exports.createCategory = async (req, res) => {
-    const { name } = req.body;
-  
-  
-    try {
-      const db = req.db;
-  
-      // Create the category
-      const category = await db.Category.create({ name });
-      res.status(201).json({ message: 'Category created successfully', category });
-    } catch (error) {
-      res.status(500).json({ message: 'Error creating category', error: error.message });
-    }
-  };
-  
-  // Get all categories
-  exports.getCategories = async (req, res) => {
-  
-  
-    try {
-      const db = req.db;
-  
-      const categories = await db.Category.findAll({ order: [['name', 'ASC']] });
-      res.status(200).json({ categories });
-    } catch (error) {
-      res.status(500).json({ message: 'Error fetching categories', error: error.message });
-    }
-  };
-  
-  // Delete a category by ID
-  exports.deleteCategory = async (req, res) => {
-    const { categoryId } = req.params;
-  
-    try {
-      const db = req.db;
-  
-      const category = await db.Category.findByPk(categoryId);
-      if (!category) {
-        return res.status(404).json({ message: 'Category not found' });
+  try {
+    const db = req.db;
+    // Fetch all treatments
+    const treatments = await db.Treatment.findAll({
+      attributes: ['id', 'name', 'category', 'description', 'duration', 'price', 'color'],
+      order: [['category', 'ASC'], ['name', 'ASC']], // Sort by category first, then by name
+    });
+
+    // Group treatments by category
+    const groupedTreatments = treatments.reduce((acc, treatment) => {
+      const category = treatment.category || 'Uncategorized'; // Handle null/undefined categories
+      if (!acc[category]) {
+        acc[category] = [];
       }
-  
-      await category.destroy();
-      res.status(200).json({ message: 'Category deleted successfully' });
-    } catch (error) {
-      res.status(500).json({ message: 'Error deleting category', error: error.message });
-    }
-  };
+      acc[category].push(treatment);
+      return acc;
+    }, {});
+
+    res.status(200).json(groupedTreatments);
+  } catch (error) {
+    console.error('Error fetching treatments by category:', error);
+    res.status(500).json({ message: 'Failed to fetch treatments' });
+  }
+};
+
+
+// Controller to get unique categories with case-insensitive search
+exports.getUniqueCategories = async (req, res) => {
+
+  try {
+    const db = req.db;
+    // Extract search filters from query parameters
+    const search = req.query.search || '';
+
+    // Query the database for unique categories
+    const categories = await db.Treatment.findAll({
+      attributes: [[fn('DISTINCT', col('category')), 'category']], // Fetch unique categories
+      where: {
+        category: {
+          [Op.iLike]: `%${search}%`, // Case-insensitive search
+        },
+      },
+      order: [[col('category'), 'ASC']], // Sort categories alphabetically
+    });
+
+    // Map results to an array of categories
+    const categoryList = categories.map((row) => row.category || 'Uncategorized');
+
+    res.status(200).json(categoryList);
+  } catch (error) {
+    console.error('Error fetching unique categories:', error);
+    res.status(500).json({ message: 'Failed to fetch categories' });
+  }
+};
   

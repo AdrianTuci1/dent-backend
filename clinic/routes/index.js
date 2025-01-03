@@ -24,7 +24,7 @@ router.use('/treatments', authenticateMiddleware, treatmentRoutes);
 
 // Public routes (no authentication)
 router.use('/auth', authRoutes);
-router.use('/category', categoryRoutes);
+router.use('/categories', categoryRoutes);
 router.use('/components', componentRoutes);
 router.use('/medics', medicRoutes);
 router.use('/patients', patientRoutes);

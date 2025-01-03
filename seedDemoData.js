@@ -1,4 +1,4 @@
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const Sequelize = require('sequelize');
 const { User, Clinic, syncMainDatabase } = require('./main/models');  // Main database models and sync function
 const initializeClinicDatabase = require('./clinic/models');  // Clinic-specific DB handler

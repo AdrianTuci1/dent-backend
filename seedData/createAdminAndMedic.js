@@ -1,4 +1,4 @@
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 const createAdminAndMedic = async (models, transaction) => {
   const { ClinicUser, Permission, ClinicUserPermission, Medic, WorkingDaysHours, DaysOff } = models;

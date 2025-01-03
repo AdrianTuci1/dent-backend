@@ -166,7 +166,6 @@ exports.viewMedic = async (req, res) => {
 
 
 
-// Update Medic
 exports.updateMedic = async (req, res) => {
   const {
     email,
@@ -175,16 +174,16 @@ exports.updateMedic = async (req, res) => {
     specialization,
     phone,
     address,
-    assignedTreatments,
-    workingDaysHours,
-    daysOff,
-    permissions,
+    assignedTreatments = [], // Default to empty array
+    workingDaysHours = [],   // Default to empty array
+    daysOff = [],            // Default to empty array
+    permissions = [],        // Default to empty array
   } = req.body;
-
 
   try {
     const db = req.db;
 
+    // Update ClinicUser
     await db.ClinicUser.update(
       { email, name },
       {
@@ -192,6 +191,7 @@ exports.updateMedic = async (req, res) => {
       }
     );
 
+    // Update Medic
     await db.Medic.update(
       {
         employmentType,
@@ -210,46 +210,52 @@ exports.updateMedic = async (req, res) => {
       where: { medicId: req.params.id },
     });
 
-    await Promise.all(
-      workingDaysHours.map(async (day) => {
-        await db.WorkingDaysHours.create({
-          medicId: req.params.id,
-          day: day.day,
-          startTime: day.startTime,
-          endTime: day.endTime,
-        });
-      })
-    );
+    if (workingDaysHours.length > 0) {
+      await Promise.all(
+        workingDaysHours.map(async (day) => {
+          await db.WorkingDaysHours.create({
+            medicId: req.params.id,
+            day: day.day,
+            startTime: day.startTime,
+            endTime: day.endTime,
+          });
+        })
+      );
+    }
 
     // Update Days Off
     await db.DaysOff.destroy({
       where: { medicId: req.params.id },
     });
 
-    await Promise.all(
-      daysOff.map(async (dayOff) => {
-        await db.DaysOff.create({
-          medicId: req.params.id,
-          name: dayOff.name,
-          startDate: dayOff.startDate,
-          endDate: dayOff.endDate,
-          repeatYearly: dayOff.repeatYearly,
-        });
-      })
-    );
+    if (daysOff.length > 0) {
+      await Promise.all(
+        daysOff.map(async (dayOff) => {
+          await db.DaysOff.create({
+            medicId: req.params.id,
+            name: dayOff.name,
+            startDate: dayOff.startDate,
+            endDate: dayOff.endDate,
+            repeatYearly: dayOff.repeatYearly,
+          });
+        })
+      );
+    }
 
     // Update Permissions
     await db.ClinicUserPermission.destroy({
       where: { userId: req.params.id },
     });
 
-    const permissionsToInsert = permissions.map((permission) => ({
-      userId: req.params.id,
-      permissionId: permission.id,
-      isEnabled: permission.isEnabled,
-    }));
+    if (permissions.length > 0) {
+      const permissionsToInsert = permissions.map((permission) => ({
+        userId: req.params.id,
+        permissionId: permission.id,
+        isEnabled: permission.isEnabled,
+      }));
 
-    await db.ClinicUserPermission.bulkCreate(permissionsToInsert);
+      await db.ClinicUserPermission.bulkCreate(permissionsToInsert);
+    }
 
     res.status(200).json({ message: 'Medic updated successfully' });
   } catch (error) {
@@ -257,7 +263,6 @@ exports.updateMedic = async (req, res) => {
     res.status(500).json({ error: 'Failed to update medic' });
   }
 };
-
 
 // Delete Medic
 exports.deleteMedic = async (req, res) => {
