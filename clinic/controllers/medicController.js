@@ -1,5 +1,6 @@
 const generateRandomString = require('../../utils/generateRandomString'); // Assuming helper function for random string
-
+const { Op } = require('sequelize');  // Import Op directly from Sequelize
+const transformWorkingHours = require('../../utils/transformHours');
 
 // Create Medic
 exports.createMedic = async (req, res) => {
@@ -174,78 +175,100 @@ exports.updateMedic = async (req, res) => {
     specialization,
     phone,
     address,
-    assignedTreatments = [], // Default to empty array
-    workingDaysHours = [],   // Default to empty array
-    daysOff = [],            // Default to empty array
-    permissions = [],        // Default to empty array
+    assignedTreatments,
+    workingHours,
+    daysOff,
+    permissions,
   } = req.body;
 
-  try {
-    const db = req.db;
+  const db = req.db;
 
+  try {
     // Update ClinicUser
-    await db.ClinicUser.update(
-      { email, name },
-      {
-        where: { id: req.params.id },
-      }
-    );
+    await db.ClinicUser.update({ email, name }, { where: { id: req.params.id } });
 
     // Update Medic
     await db.Medic.update(
-      {
-        employmentType,
-        specialization,
-        phone,
-        address,
-        assignedTreatments,
-      },
-      {
-        where: { id: req.params.id },
-      }
+      { employmentType, specialization, phone, address, assignedTreatments },
+      { where: { id: req.params.id } }
     );
 
-    // Update Working Days Hours
-    await db.WorkingDaysHours.destroy({
+    // Transform the workingHours object into an array
+    const transformedWorkingHours = transformWorkingHours(workingHours);
+
+    // Extract days from the transformed data
+    const incomingDays = transformedWorkingHours.map((entry) => entry.day);
+
+    // Fetch existing working hours for the medic
+    const existingWorkingDays = await db.WorkingDaysHours.findAll({
       where: { medicId: req.params.id },
+      attributes: ['id', 'day'],
     });
 
-    if (workingDaysHours.length > 0) {
-      await Promise.all(
-        workingDaysHours.map(async (day) => {
-          await db.WorkingDaysHours.create({
-            medicId: req.params.id,
-            day: day.day,
-            startTime: day.startTime,
-            endTime: day.endTime,
-          });
-        })
-      );
+    const existingDays = existingWorkingDays.map((record) => record.day);
+
+    // Identify days to delete (existing days not in the incoming data)
+    const daysToDelete = existingDays.filter((day) => !incomingDays.includes(day));
+
+    // Delete unused records
+    if (daysToDelete.length > 0) {
+      await db.WorkingDaysHours.destroy({
+        where: {
+          medicId: req.params.id,
+          day: { [Op.in]: daysToDelete },
+        },
+      });
     }
 
+    // Update or insert records
+    await Promise.all(
+      transformedWorkingHours.map(async (entry) => {
+        if (!entry.day || !entry.startTime || !entry.endTime) {
+          console.warn('Invalid working hours entry:', entry); // Log invalid entry
+          return; // Skip invalid entry
+        }
+    
+        const existingRecord = existingWorkingDays.find((record) => record.day === entry.day);
+    
+        if (existingRecord) {
+          // Update existing record
+          await db.WorkingDaysHours.update(
+            { startTime: entry.startTime, endTime: entry.endTime },
+            { where: { id: existingRecord.id } }
+          );
+        } else {
+          // Create new record
+          await db.WorkingDaysHours.create({
+            medicId: req.params.id,
+            day: entry.day,
+            startTime: entry.startTime,
+            endTime: entry.endTime,
+          });
+        }
+      })
+    );
+
+
+
     // Update Days Off
-    await db.DaysOff.destroy({
-      where: { medicId: req.params.id },
-    });
+    await db.DaysOff.destroy({ where: { medicId: req.params.id } });
 
     if (daysOff.length > 0) {
       await Promise.all(
-        daysOff.map(async (dayOff) => {
-          await db.DaysOff.create({
+        daysOff.map((dayOff) =>
+          db.DaysOff.create({
             medicId: req.params.id,
             name: dayOff.name,
             startDate: dayOff.startDate,
             endDate: dayOff.endDate,
             repeatYearly: dayOff.repeatYearly,
-          });
-        })
+          })
+        )
       );
     }
 
     // Update Permissions
-    await db.ClinicUserPermission.destroy({
-      where: { userId: req.params.id },
-    });
+    await db.ClinicUserPermission.destroy({ where: { userId: req.params.id } });
 
     if (permissions.length > 0) {
       const permissionsToInsert = permissions.map((permission) => ({
@@ -263,6 +286,7 @@ exports.updateMedic = async (req, res) => {
     res.status(500).json({ error: 'Failed to update medic' });
   }
 };
+
 
 // Delete Medic
 exports.deleteMedic = async (req, res) => {

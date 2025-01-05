@@ -28,7 +28,7 @@ const getPatients = async (req, res) => {
       ],
       where: {
         name: {
-          [Op.like]: `%${name}%`, // Search by name (case-insensitive match)
+          [Op.iLike]: `%${name}%`, // Search by name (case-insensitive match)
         },
       },
       attributes: ['id', 'name', 'email', 'role', 'photo'],

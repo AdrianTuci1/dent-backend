@@ -77,7 +77,7 @@ exports.getAllTreatments = async (req, res) => {
     const treatments = await db.Treatment.findAll({
       where: {
         name: {
-          [Op.like]: `%${name}%`, // Search treatments by name
+          [Op.iLike]: `%${name}%`, // Search treatments by name
         },
       },
       limit: limit,

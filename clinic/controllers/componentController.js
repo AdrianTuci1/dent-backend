@@ -33,7 +33,7 @@ exports.getAllComponents = async (req, res) => {
     const components = await db.Component.findAll({
       where: {
         componentName: {
-          [Op.like]: `%${name}%`, // Search by name (case-insensitive partial match)
+          [Op.iLike]: `%${name}%`, // Search by name (case-insensitive partial match)
         },
       },
       limit: limit,
