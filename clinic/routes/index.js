@@ -14,6 +14,7 @@ const patientRoutes = require('./patientRoutes');
 const requestAppointmentRoutes = require('./requestAppointmentRoutes');
 const searchRoutes = require('./searchRoutes');
 const dentalHistoryRoutes = require('./dentalHistoryRoutes')
+const permissionsRoutes = require('./permissionsRoutes')
 
 // Apply clinic database middleware globally
 router.use(clinicDatabaseMiddleware);
@@ -30,6 +31,8 @@ router.use('/medics', medicRoutes);
 router.use('/patients', patientRoutes);
 router.use('/requests', requestAppointmentRoutes);
 router.use('/search', searchRoutes);
-router.use('/dentalHistory', dentalHistoryRoutes)
+router.use('/dentalHistory', dentalHistoryRoutes);
+router.use('/permissions', permissionsRoutes);
+
 
 module.exports = router;
