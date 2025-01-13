@@ -1,6 +1,4 @@
 const generateRandomString = require('../../utils/generateRandomString'); // Assuming helper function for random string
-const { Op } = require('sequelize');  // Import Op directly from Sequelize
-const transformWorkingHours = require('../../utils/transformHours');
 const parseMedicBody = require('../../utils/paraseMedicBody')
 
 // Create Medic
@@ -129,10 +127,10 @@ exports.viewMedic = async (req, res) => {
         {
           model: db.Permission,
           as: 'permissions',
-          attributes: ['id', 'name'], // Only include id and name
+          attributes: ['id'], // Only include id and name
           through: {
             model: db.ClinicUserPermission,
-            attributes: [], // Exclude join table attributes
+            attributes: ['isEnabled'],
           },
         },
       ],
@@ -164,7 +162,7 @@ exports.viewMedic = async (req, res) => {
 
 
 
-//Update medic
+// Update Medic
 exports.updateMedic = async (req, res) => {
   const {
     name,
@@ -185,75 +183,95 @@ exports.updateMedic = async (req, res) => {
   try {
     const db = req.db;
 
-    // 1. Update ClinicUser
+    // 1. Validate Medic ID
+    const medicExists = await db.ClinicUser.findOne({ where: { id: medicId } });
+    if (!medicExists) {
+      return res.status(404).json({ error: "Medic not found" });
+    }
+
+    // 2. Update ClinicUser
     const clinicUserUpdated = await db.ClinicUser.update(
       { email, name, photo },
       { where: { id: medicId } }
     );
 
     if (!clinicUserUpdated[0]) {
-      return res.status(404).json({ error: 'ClinicUser not found' });
+      return res.status(404).json({ error: "Failed to update ClinicUser" });
     }
 
-    // 2. Update Medic
+    // 3. Update Medic Details
     const medicUpdated = await db.Medic.update(
       { employmentType, specialization, phone, address, assignedTreatments },
       { where: { id: medicId } }
     );
 
     if (!medicUpdated[0]) {
-      return res.status(404).json({ error: 'Medic not found' });
+      return res.status(404).json({ error: "Failed to update Medic details" });
     }
 
-    // 3. Update WorkingDaysHours
+    // 4. Update WorkingDaysHours
     await db.WorkingDaysHours.destroy({ where: { medicId } });
-
-    if (workingHours.length > 0) {
-      await db.WorkingDaysHours.bulkCreate(
-        workingHours.map((entry) => ({
-          medicId,
-          day: entry.day,
-          startTime: entry.startTime,
-          endTime: entry.endTime,
-        }))
-      );
+    if (Array.isArray(workingHours) && workingHours.length > 0) {
+      const workingDays = workingHours.map((entry) => ({
+        medicId,
+        day: entry.day,
+        startTime: entry.startTime,
+        endTime: entry.endTime,
+      }));
+      await db.WorkingDaysHours.bulkCreate(workingDays);
     }
 
-    // 4. Update DaysOff
+    // 5. Update DaysOff
     await db.DaysOff.destroy({ where: { medicId } });
-
-    if (daysOff.length > 0) {
-      await db.DaysOff.bulkCreate(
-        daysOff.map((dayOff) => ({
-          medicId,
-          name: dayOff.name,
-          startDate: dayOff.startDate,
-          endDate: dayOff.endDate,
-          repeatYearly: dayOff.repeatYearly,
-        }))
-      );
+    if (Array.isArray(daysOff) && daysOff.length > 0) {
+      const daysOffEntries = daysOff.map((dayOff) => ({
+        medicId,
+        name: dayOff.name,
+        startDate: dayOff.startDate,
+        endDate: dayOff.endDate,
+        repeatYearly: dayOff.repeatYearly,
+      }));
+      await db.DaysOff.bulkCreate(daysOffEntries);
     }
 
-    // 5. Update Permissions
-    await db.ClinicUserPermission.destroy({ where: { userId: medicId } });
+    // Fetch existing permissions
+    const existingPermissions = await db.ClinicUserPermission.findAll({
+      where: { userId: medicId },
+    });
+  
 
-    if (permissions.length > 0) {
-      await db.ClinicUserPermission.bulkCreate(
-        permissions.map((permission) => ({
-          userId: medicId,
-          permissionId: permission.id,
-          isEnabled: permission.isEnabled,
-        }))
+    // Prepare permissions for upsert
+    const updatedPermissions = permissions.map((permission) => {
+      const existing = existingPermissions.find(
+        (p) => p.permissionId === permission.id
       );
+      return {
+        userId: medicId,
+        permissionId: permission.id,
+        isEnabled: permission.isEnabled,
+        ...(existing && { id: existing.id }), // Include `id` if exists
+      };
+    });
+
+
+    // Upsert permissions
+    try {
+      await db.ClinicUserPermission.bulkCreate(updatedPermissions, {
+        updateOnDuplicate: ["isEnabled"],
+      });
+      console.log("Permissions updated successfully");
+    } catch (error) {
+      console.error("Error during bulkCreate:", error);
     }
 
     // Send success response
-    res.status(200).json({ message: 'Medic updated successfully' });
+    res.status(200).json({ message: "Medic updated successfully" });
   } catch (error) {
-    console.error('Error updating medic:', error);
-    res.status(500).json({ error: 'Failed to update medic' });
+    console.error("Error updating medic:", error);
+    res.status(500).json({ error: "Failed to update medic" });
   }
 };
+
 
 // Delete Medic
 exports.deleteMedic = async (req, res) => {
