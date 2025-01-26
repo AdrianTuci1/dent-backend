@@ -1,12 +1,5 @@
 const express = require('express');
-const {
-  createAppointment,
-  getAppointmentDetails,
-  updateAppointment,
-  deleteAppointment,
-  getPatientAppointments,
-  getMedicAppointments,
-} = require('../controllers/appointmentController');
+const AppointmentController = require('../controllers/appointmentController');
 const {
   updateAppointmentTreatments
 } = require('../controllers/appointmentTreatmentController');
@@ -14,19 +7,24 @@ const { broadcastUpdatedAppointment } = require('../middleware/broadcastUpdatedA
 
 const router = express.Router();
 
+
+const appointmentController = new AppointmentController();
+
 // Routes requiring subaccount authentication (e.g., medics access)
 
 // Create a new appointment with initial treatment (subaccount access)
-router.post('/', createAppointment, broadcastUpdatedAppointment);
+router.post('/', appointmentController.createItems, broadcastUpdatedAppointment);
 
 // Get appointment details (including treatments) (subaccount access)
-router.get('/:appointmentId', getAppointmentDetails);
+router.get('/:appointmentId', appointmentController.getAppointmentDetails);
 
-// Update an appointment (subaccount access)
-router.patch('/:appointmentId', updateAppointment, broadcastUpdatedAppointment);
+// Update one or more appointments
+router.patch('/', appointmentController.updateItems, broadcastUpdatedAppointment); // For batch updates
+router.patch('/:appointmentId', appointmentController.updateItems, broadcastUpdatedAppointment); // For single updates
 
-// Delete an appointment (and its treatments) (subaccount access)
-router.delete('/:appointmentId', deleteAppointment);
+// Delete one or more appointments
+router.delete('/', appointmentController.deleteItems); // For batch deletions
+router.delete('/:appointmentId', appointmentController.deleteItems); // For single deletions
 
 // Add treatment to an appointment (subaccount access)
 router.post('/:appointmentId/treatments', updateAppointmentTreatments);

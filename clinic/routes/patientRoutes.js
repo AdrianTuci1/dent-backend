@@ -1,21 +1,24 @@
 const express = require('express');
-const { getPatients, createPatient, getPatientById, updatePatient, deletePatient } = require('../controllers/patientController')
+const PatientController = require('../controllers/patientController')
 
 const router = express.Router();
+const patientController = new PatientController();
 
-router.get('/', getPatients);
+router.get('/', patientController.getPatients);
 
 // Route to create a new patient
-router.post('/', createPatient);
+router.post('/', patientController.createItems);
 
 // Route to get a patient by ID
 router.get('/:id', getPatientById);
 
 // Route to update patient details by ID
-router.put('/:id', updatePatient);
+router.put('/:id', patientController.updateItems);
+router.put('/', patientController.updateItems)
 
 // Route to delete a patient by ID
-router.delete('/:id', deletePatient);
+router.delete('/:id', patientController.deleteItems);
+router.delete('/', patientController.deleteItems)
 
 
 module.exports = router;

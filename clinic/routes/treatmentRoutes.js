@@ -1,10 +1,12 @@
 const express = require('express');
-const { createTreatment, getAllTreatments, updateTreatment, deleteTreatment, getTreatmentById } = require('../controllers/treatmentController');
+const TreatmentController = require('../controllers/treatmentController');
 
 const router = express.Router();
 
+const treatmentController = new TreatmentController();
+
 // Create a new treatment
-router.post('/', createTreatment);
+router.post('/', treatmentController.createItems);
 
 // Get all treatments
 router.get('/', getAllTreatments);
@@ -13,9 +15,11 @@ router.get('/', getAllTreatments);
 router.get('/:treatmentId', getTreatmentById)
 
 // Update a treatment by ID
-router.put('/:treatmentId', updateTreatment);
+router.put('/:treatmentId', treatmentController.updateItems);
+router.put('/', treatmentController.updateItems); // For batch updates
 
 // Delete a treatment by ID
-router.delete('/:treatmentId', deleteTreatment);
+router.delete('/:treatmentId', treatmentController.deleteItems);
+router.delete('/', treatmentController.deleteItems); // For batch deletions
 
 module.exports = router;

@@ -1,101 +1,63 @@
-const { Op } = require('sequelize');
+const ComponentService = require('../services/ComponentService');
 
-// Create Component
-exports.createComponent = async (req, res) => {
-  const { componentName, unitPrice, vendor, quantity } = req.body;
+class ComponentController {
+  async createItems(req) {
+    const componentService = new ComponentService(req.db);
+    const components = Array.isArray(req.body) ? req.body : [req.body];
 
+    const createdComponents = await componentService.createComponents(components);
 
-  try {
-    const db = req.db;
-
-    const component = await db.Component.create({
-      componentName,
-      unitPrice,
-      vendor,
-      quantity
-    });
-    res.status(201).json({ message: 'Component created successfully', component });
-  } catch (error) {
-    res.status(500).json({ message: 'Error creating component', error });
+    // Return the response object instead of using `res`
+    return {
+      message: `${createdComponents.length} component(s) created successfully`,
+      components: createdComponents,
+    };
   }
-};
 
-// Get All Components with search and pagination
-exports.getAllComponents = async (req, res) => {
-  try {
-    const db = req.db;
+  async updateItems(req) {
+    const componentService = new ComponentService(req.db);
+    const components = Array.isArray(req.body) ? req.body : [req.body];
 
-    // Extract query parameters for search and pagination
-    const { name = '', offset = 0 } = req.query; // Default values: name is empty, offset = 0
-    const limit = 20; // Limit results to 20
+    const updatedComponents = await componentService.updateComponents(components);
 
-    // Fetch components with search and pagination
-    const components = await db.Component.findAll({
-      where: {
-        componentName: {
-          [Op.iLike]: `%${name}%`, // Search by name (case-insensitive partial match)
-        },
-      },
-      limit: limit,
-      offset: parseInt(offset),
-      order: [['componentName', 'ASC']], // Sort components alphabetically
-    });
-
-    res.status(200).json({
-      components,
-      limit,
-      offset: parseInt(offset) + limit, // Return next offset for "Load More"
-    });
-  } catch (error) {
-    console.error('Error fetching components:', error);
-    res.status(500).json({ message: 'Error fetching components', error });
+    // Return the response object instead of using `res`
+    return {
+      message: `${updatedComponents.length} component(s) updated successfully`,
+      components: updatedComponents,
+    };
   }
-};
 
+  async deleteItems(req) {
+    const componentService = new ComponentService(req.db);
+    const componentIds = Array.isArray(req.body) ? req.body : [req.body];
 
-// Update Component
-exports.updateComponent = async (req, res) => {
-  const { componentId } = req.params;
-  const { componentName, unitPrice, vendor, quantity } = req.body;
+    await componentService.deleteComponents(componentIds);
 
+    // Return the response object instead of using `res`
+    return {
+      message: `${componentIds.length} component(s) deleted successfully`,
+    };
+  }
 
-  try {
-    const db = req.db;
+  // If you still need `getAllComponents`, keep it as is because it requires `res` for pagination:
+  async getAllComponents(req, res) {
+    try {
+      const { name = '', offset = 0 } = req.query;
+      const limit = 20;
 
-    const component = await db.Component.findOne({ where: { id: componentId } });
+      const componentService = new ComponentService(req.db);
+      const components = await componentService.getAllComponents({ name, offset, limit });
 
-    if (!component) {
-      return res.status(404).json({ message: 'Component not found' });
+      res.status(200).json({
+        components,
+        limit,
+        offset: parseInt(offset, 10) + limit,
+      });
+    } catch (error) {
+      console.error('Error fetching components:', error);
+      res.status(500).json({ message: 'Error fetching components', error: error.message });
     }
-
-    component.componentName = componentName;
-    component.unitPrice = unitPrice;
-    component.vendor = vendor;
-    component.quantity = quantity;
-    await component.save();
-
-    res.status(200).json({ message: 'Component updated successfully', component });
-  } catch (error) {
-    res.status(500).json({ message: 'Error updating component', error });
   }
-};
+}
 
-// Delete Component
-exports.deleteComponent = async (req, res) => {
-  const { componentId } = req.params;
-
-  try {
-    const db = req.db;
-
-    const component = await db.Component.findOne({ where: { id: componentId } });
-
-    if (!component) {
-      return res.status(404).json({ message: 'Component not found' });
-    }
-
-    await component.destroy();
-    res.status(200).json({ message: 'Component deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ message: 'Error deleting component', error });
-  }
-};
+module.exports = ComponentController;

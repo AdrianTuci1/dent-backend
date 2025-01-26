@@ -53,7 +53,19 @@ async function calculateCurrentWeek(subdomain) {
   }
 }
 
+
+
+        // Helper function to get today's date range (start and end)
+  async function getTodayRange () {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); // Start of today
+          const tomorrow = new Date(today);
+          tomorrow.setDate(today.getDate() + 1); // Start of tomorrow
+          return { today, tomorrow };
+        };
+
 module.exports = {
   getClinicTimezone,
   calculateCurrentWeek,
+  getTodayRange,
 };
