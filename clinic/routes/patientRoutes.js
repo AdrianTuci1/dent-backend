@@ -10,7 +10,7 @@ router.get('/', patientController.getPatients);
 router.post('/', patientController.createItems);
 
 // Route to get a patient by ID
-router.get('/:id', getPatientById);
+router.get('/:id', patientController.getPatientById);
 
 // Route to update patient details by ID
 router.put('/:id', patientController.updateItems);

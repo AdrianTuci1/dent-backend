@@ -98,11 +98,15 @@ class MedicService {
       }
     }
   
+
     // **Update Medic(s)**
     async updateMedics(medicsData) {
-      const transaction = await this.db.clinicSequelize.transaction();
-  
       try {
+        // Validate the entire input array
+        if (!Array.isArray(medicsData) || medicsData.length === 0) {
+          throw new Error('Invalid input: medicsData must be a non-empty array.');
+        }
+    
         for (const medicData of medicsData) {
           const {
             id,
@@ -118,68 +122,93 @@ class MedicService {
             daysOff,
             permissions,
           } = medicData;
-  
-          // Validate Medic ID
+    
+          // Validate `id`
+          if (!id) {
+            console.error('Invalid medic data:', medicData); // Log the problematic record
+            throw new Error('Medic ID is required for updating a medic.');
+          }
+    
+          // Check if the medic exists
           const medicExists = await this.db.ClinicUser.findOne({ where: { id } });
-          if (!medicExists) throw new Error(`Medic with ID ${id} not found`);
-  
-          // Update ClinicUser
-          await this.db.ClinicUser.update({ email, name, photo }, { where: { id }, transaction });
-  
-          // Update Medic Details
-          await this.db.Medic.update(
-            { employmentType, specialization, phone, address, assignedTreatments },
-            { where: { id }, transaction }
-          );
-  
-          // Update WorkingHours
-          await this.db.WorkingDaysHours.destroy({ where: { medicId: id }, transaction });
-          if (Array.isArray(workingHours) && workingHours.length > 0) {
-            const workingDays = workingHours.map((entry) => ({
-              medicId: id,
-              day: entry.day,
-              startTime: entry.startTime,
-              endTime: entry.endTime,
-            }));
-            await this.db.WorkingDaysHours.bulkCreate(workingDays, { transaction });
+          if (!medicExists) {
+            throw new Error(`Medic with ID ${id} not found.`);
           }
-  
-          // Update DaysOff
-          await this.db.DaysOff.destroy({ where: { medicId: id }, transaction });
-          if (Array.isArray(daysOff) && daysOff.length > 0) {
-            const daysOffEntries = daysOff.map((dayOff) => ({
-              medicId: id,
-              name: dayOff.name,
-              startDate: dayOff.startDate,
-              endDate: dayOff.endDate,
-              repeatYearly: dayOff.repeatYearly,
-            }));
-            await this.db.DaysOff.bulkCreate(daysOffEntries, { transaction });
+    
+          // **Update ClinicUser**
+          if (name || email || photo) {
+            await this.db.ClinicUser.update({ email, name, photo }, { where: { id } });
           }
-  
-          // Update Permissions
-          const existingPermissions = await this.db.ClinicUserPermission.findAll({ where: { userId: id } });
-          const updatedPermissions = permissions.map((permission) => {
-            const existing = existingPermissions.find((p) => p.permissionId === permission.id);
-            return {
-              userId: id,
-              permissionId: permission.id,
-              isEnabled: permission.isEnabled,
-              ...(existing && { id: existing.id }),
-            };
-          });
-  
-          await this.db.ClinicUserPermission.bulkCreate(updatedPermissions, {
-            updateOnDuplicate: ['isEnabled'],
-            transaction,
-          });
+    
+          // **Update Medic Details**
+          if (
+            employmentType ||
+            specialization ||
+            phone ||
+            address ||
+            assignedTreatments
+          ) {
+            await this.db.Medic.update(
+              { employmentType, specialization, phone, address, assignedTreatments },
+              { where: { id } }
+            );
+          }
+    
+          // **Update WorkingHours**
+          if (Array.isArray(workingHours)) {
+            await this.db.WorkingDaysHours.destroy({ where: { medicId: id } });
+            if (workingHours.length > 0) {
+              const workingDays = workingHours.map((entry) => ({
+                medicId: id,
+                day: entry.day,
+                startTime: entry.startTime,
+                endTime: entry.endTime,
+              }));
+              await this.db.WorkingDaysHours.bulkCreate(workingDays);
+            }
+          }
+    
+          // **Update DaysOff**
+          if (Array.isArray(daysOff)) {
+            await this.db.DaysOff.destroy({ where: { medicId: id } });
+            if (daysOff.length > 0) {
+              const daysOffEntries = daysOff.map((dayOff) => ({
+                medicId: id,
+                name: dayOff.name,
+                startDate: dayOff.startDate,
+                endDate: dayOff.endDate,
+                repeatYearly: dayOff.repeatYearly,
+              }));
+              await this.db.DaysOff.bulkCreate(daysOffEntries);
+            }
+          }
+    
+          // **Update Permissions**
+          if (Array.isArray(permissions)) {
+            const existingPermissions = await this.db.ClinicUserPermission.findAll({
+              where: { userId: id },
+            });
+    
+            const updatedPermissions = permissions.map((permission) => {
+              const existing = existingPermissions.find((p) => p.permissionId === permission.id);
+              return {
+                userId: id,
+                permissionId: permission.id,
+                isEnabled: permission.isEnabled,
+                ...(existing && { id: existing.id }),
+              };
+            });
+    
+            await this.db.ClinicUserPermission.bulkCreate(updatedPermissions, {
+              updateOnDuplicate: ['isEnabled'],
+            });
+          }
         }
-  
-        await transaction.commit();
+    
+        console.log('Medics updated successfully');
       } catch (error) {
-        await transaction.rollback();
-        console.error('Error updating medic(s):', error);
-        throw new Error('Failed to update medic(s)');
+        console.error('Error updating medic(s):', error.message);
+        throw new Error(`Failed to update medic(s): ${error.message}`);
       }
     }
   

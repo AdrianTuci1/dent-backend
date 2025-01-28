@@ -9,10 +9,10 @@ const treatmentController = new TreatmentController();
 router.post('/', treatmentController.createItems);
 
 // Get all treatments
-router.get('/', getAllTreatments);
+router.get('/', treatmentController.getAllTreatments);
 
 // Get treatment by ID
-router.get('/:treatmentId', getTreatmentById)
+router.get('/:treatmentId', treatmentController.getTreatmentById)
 
 // Update a treatment by ID
 router.put('/:treatmentId', treatmentController.updateItems);

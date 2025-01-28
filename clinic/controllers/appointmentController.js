@@ -1,41 +1,103 @@
 const AppointmentService = require('../services/AppointmentService');
 const { getTodayRange } = require('../../utils/dateUtils');
+const { broadcastUpdatedAppointment } = require('../middleware/broadcastUpdatedAppointment');
+const { deleteAppointment, getAppointments } = require('../../websockets/appointmentsState');
+const { broadcastToSubdomain } = require('../../websockets/broadcast');
+
+
 
 class AppointmentController {
   async createItems(req) {
     const appointmentService = new AppointmentService(req.db);
-    const appointmentsData = Array.isArray(req.body) ? req.body : [req.body];
 
-    const createdAppointments = await appointmentService.createAppointments(appointmentsData);
+    try {
+      const appointmentsData = Array.isArray(req.body) ? req.body : [req.body];
+      const createdAppointments = await appointmentService.createAppointments(appointmentsData);
 
-    return {
-      message: `${createdAppointments.length} appointment(s) created successfully`,
-      appointments: createdAppointments,
-    };
+      // Broadcast each created appointment
+      for (const appointment of createdAppointments) {
+        req.updatedAppointmentId = appointment.appointmentId; // Add the appointment ID to the request object
+        await broadcastUpdatedAppointment(req, { status: () => ({ json: () => null }) }); // Silent response
+      }
+
+      return {
+        message: `${createdAppointments.length} appointment(s) created successfully`,
+        appointments: createdAppointments,
+      };
+    } catch (error) {
+      console.error('Error creating appointments:', error);
+      throw new Error(`Failed to create appointments: ${error.message}`);
+    }
   }
 
   async updateItems(req) {
     const appointmentService = new AppointmentService(req.db);
-    const appointmentsData = Array.isArray(req.body) ? req.body : [req.body];
 
-    const updatedAppointments = await appointmentService.updateAppointments(appointmentsData);
+    try {
+      const updates = Array.isArray(req.body) ? req.body : [req.body];
+      const updatedAppointments = await appointmentService.updateAppointments(updates);
 
-    return {
-      message: `${updatedAppointments.length} appointment(s) updated successfully`,
-      appointments: updatedAppointments,
-    };
+      // Broadcast each updated appointment
+      for (const appointment of updatedAppointments) {
+        req.updatedAppointmentId = appointment.appointmentId; // Add the appointment ID to the request object
+        await broadcastUpdatedAppointment(req, { status: () => ({ json: () => null }) }); // Silent response
+      }
+
+      return {
+        message: `${updatedAppointments.length} appointment(s) updated successfully`,
+        appointments: updatedAppointments,
+      };
+    } catch (error) {
+      console.error('Error updating appointments:', error);
+      throw new Error(`Failed to update appointments: ${error.message}`);
+    }
   }
+
 
   async deleteItems(req) {
     const appointmentService = new AppointmentService(req.db);
-    const appointmentIds = Array.isArray(req.body) ? req.body : [req.body];
+    const subdomain = req.subdomain; // Extract subdomain from the request
 
-    await appointmentService.deleteAppointments(appointmentIds);
+    try {
+      // Extract appointment IDs
+      let appointmentIds = [];
+      if (req.params.appointmentId) {
+        appointmentIds = [req.params.appointmentId]; // Handle single deletion via params
+      } else if (Array.isArray(req.body.ids)) {
+        appointmentIds = req.body.ids; // Handle batch deletion via request body
+      } else if (Array.isArray(req.body)) {
+        appointmentIds = req.body; // Handle array of IDs directly in the body
+      }
 
-    return {
-      message: `${appointmentIds.length} appointment(s) deleted successfully`,
-    };
+      // Validate extracted IDs
+      if (!appointmentIds.length) {
+        throw new Error('Invalid or missing appointment IDs.');
+      }
+
+      // Delete appointments from the database
+      await appointmentService.deletedAppointments(appointmentIds);
+
+      // Update in-memory state and broadcast changes
+      for (const appointmentId of appointmentIds) {
+        deleteAppointment(subdomain, appointmentId); // Remove from in-memory state
+      }
+
+      // Broadcast the updated appointments list
+      broadcastToSubdomain(subdomain, {
+        type: 'appointments',
+        action: 'view',
+        data: getAppointments(subdomain), // Get the updated appointments
+      });
+
+      return {
+        message: `${appointmentIds.length} appointment(s) deleted successfully`,
+      };
+    } catch (error) {
+      console.error('Error deleting appointments:', error);
+      throw new Error(`Failed to delete appointments: ${error.message}`);
+    }
   }
+
 
   async getAppointmentDetails(req, res) {
     try {

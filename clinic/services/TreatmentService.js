@@ -112,81 +112,63 @@ class TreatmentService {
 
 
 
-      // Update a single treatment by ID
+    // Update a single treatment by ID
     async updateSingleTreatment(treatmentId, data, transaction) {
-        const { name, category, description, duration, price, components, color } = data;
+      const { name, category, description, duration, price, components, color } = data;
 
-        // Fetch the existing treatment
-        const treatment = await this.db.Treatment.findOne({ where: { id: treatmentId }, transaction });
-        if (!treatment) {
-        throw new Error(`Treatment with ID ${treatmentId} not found`);
-        }
+      const treatment = await this.db.Treatment.findOne({ where: { id: treatmentId }, transaction });
+      if (!treatment) throw new Error(`Treatment with ID ${treatmentId} not found`);
 
-        // Validate components array
-        if (!Array.isArray(components)) {
-        throw new Error('`components` must be an array');
-        }
+      if (!Array.isArray(components)) throw new Error('`components` must be an array');
 
-        // Update treatment fields
-        await treatment.update(
-        { name, category, description, duration, price, color },
-        { transaction }
-        );
+      await treatment.update({ name, category, description, duration, price, color }, { transaction });
 
-        // Clear the existing component associations
-        await this.db.TreatmentComponent.destroy({ where: { treatmentId }, transaction });
+      await this.db.TreatmentComponent.destroy({ where: { treatmentId }, transaction });
 
-        // Prepare the new data for components
-        const treatmentComponentsData = components.map((comp) => ({
+      const treatmentComponentsData = components.map((comp) => ({
         treatmentId,
-        componentId: comp.id, // Extract `id` for componentId
-        componentUnits: comp.componentUnits, // Extract `componentUnits`
-        }));
+        componentId: comp.id,
+        componentUnits: comp.componentUnits,
+      }));
 
-        // Add updated components to the treatment
-        await this.db.TreatmentComponent.bulkCreate(treatmentComponentsData, { transaction });
+      await this.db.TreatmentComponent.bulkCreate(treatmentComponentsData, { transaction });
 
-        return treatment;
+      return treatment;
     }
 
     // Update multiple treatments
     async updateBatchTreatments(updates) {
-        const transaction = await this.db.clinicSequelize.transaction();
-        try {
-        const updatedTreatments = [];
-
-        for (const update of updates) {
-            const { id: treatmentId, ...data } = update; // Extract treatment ID
-            const updatedTreatment = await this.updateSingleTreatment(treatmentId, data, transaction);
-            updatedTreatments.push(updatedTreatment);
-        }
-
+      const transaction = await this.db.clinicSequelize.transaction();
+      try {
+        const updatedTreatments = await Promise.all(
+          updates.map(({ id: treatmentId, ...data }) =>
+            this.updateSingleTreatment(treatmentId, data, transaction)
+          )
+        );
         await transaction.commit();
         return updatedTreatments;
-        } catch (error) {
+      } catch (error) {
         await transaction.rollback();
         console.error('Error in batch treatment update:', error);
         throw new Error('Failed to update batch treatments');
-        }
+      }
     }
 
     // Handle both single and batch updates
     async updateTreatments(updates) {
-        if (Array.isArray(updates)) {
-        return await this.updateBatchTreatments(updates); // Handle batch updates
-        } else {
-        // Wrap single update in a transaction
-        const transaction = await this.db.clinicSequelize.transaction();
-        try {
-            const updatedTreatment = await this.updateSingleTreatment(updates.id, updates, transaction);
-            await transaction.commit();
-            return [updatedTreatment]; // Return as an array for consistency
-        } catch (error) {
-            await transaction.rollback();
-            console.error('Error in single treatment update:', error);
-            throw new Error('Failed to update treatment');
-        }
-        }
+      const isBatch = Array.isArray(updates);
+      const transaction = await this.db.clinicSequelize.transaction();
+      try {
+        const updatedTreatments = isBatch
+          ? await this.updateBatchTreatments(updates)
+          : [await this.updateSingleTreatment(updates.id, updates, transaction)];
+        await transaction.commit();
+        return updatedTreatments;
+      } catch (error) {
+        await transaction.rollback();
+        console.error('Error updating treatments:', error);
+        throw new Error(isBatch ? 'Failed to update batch treatments' : 'Failed to update treatment');
+      }
     }
 
 

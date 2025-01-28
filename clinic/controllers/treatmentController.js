@@ -14,9 +14,19 @@ class TreatmentController {
 
   async updateItems(req) {
     const treatmentService = new TreatmentService(req.db);
+  
+    // Ensure the request body is always an array
     const updates = Array.isArray(req.body) ? req.body : [req.body];
+  
+    // Validate that there are updates to process
+    if (updates.length === 0) {
+      throw new Error('No treatment updates provided');
+    }
+  
+    // Call the service to process the updates
     const updatedTreatments = await treatmentService.updateTreatments(updates);
-
+  
+    // Return a structured response
     return {
       message: `${updatedTreatments.length} treatment(s) updated successfully`,
       treatments: updatedTreatments,

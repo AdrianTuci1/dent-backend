@@ -22,15 +22,38 @@ class MedicController {
     };
   }
 
+  
   async updateItems(req) {
     const medicService = new MedicService(req.db);
     const medicDataArray = Array.isArray(req.body) ? req.body : [req.body];
-
-    // Parse the medic data
-    const parsedMedics = medicDataArray.map((data) => parseMedicBody(data));
-
+  
+    // Parse and flatten the medic data
+    const parsedMedics = medicDataArray.map((data) => {
+      const {
+        id,
+        info,
+        assignedServices,
+        daysOff,
+        workingHours,
+        permissions,
+      } = data;
+  
+      return {
+        id,
+        ...info, // Spread fields from `info` (e.g., name, email, etc.)
+        assignedTreatments: assignedServices?.assignedTreatments || [], // Extract assignedTreatments
+        workingHours: Object.entries(workingHours || {}).map(([day, hours]) => {
+          const [startTime, endTime] = hours.split('-');
+          return { day, startTime, endTime };
+        }), // Convert workingHours object to array
+        daysOff: daysOff || [],
+        permissions: permissions || [],
+      };
+    });
+  
+    // Update the medics
     await medicService.updateMedics(parsedMedics);
-
+  
     return {
       message: `${parsedMedics.length} medic(s) updated successfully`,
     };

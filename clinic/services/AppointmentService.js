@@ -1,4 +1,5 @@
 const { generateAppointmentId } = require('../../utils/generateAppointmentId')
+const { Op } = require('sequelize')
 
 class AppointmentService {
     constructor(db) {
@@ -87,86 +88,127 @@ class AppointmentService {
         price: appointment.price,
         isPaid: appointment.isPaid,
         status: appointment.status,
-        medic: {
-          id: appointment.medic.id,
-          name: appointment.medic.name,
-        },
-        patient: {
-          id: appointment.patient.id,
-          name: appointment.patient.name,
-        },
-        treatments: formattedTreatments,
+        medicId: appointment.medic.id,
+        medicUser: appointment.medic.name || appointment.medic.id,
+        patientId: appointment.patient.id,
+        patientUser: appointment.patient.name || appointment.patient.id,
+        createdAt: appointment.createdAt,
+        updatedAt: appointment.updatedAt,
+        treatmentId: formattedTreatments[0]?.treatmentId || null,
+        initialTreatment: formattedTreatments[0]?.treatmentName || null, // Get the first treatment name
+        treatments: formattedTreatments, // Include all treatments in the response
       };
     }
 
 
-        // **Update Appointment(s)**
-    async updateAppointments(appointmentsData) {
-        const updatedAppointments = [];
+    // Update a single appointment
+    async updateSingleAppointment(data, transaction) {
+      const {
+        appointmentId,
+        date,
+        time,
+        medicId,
+        patientId,
+        price,
+        treatments,
+        isDone,
+        isPaid,
+      } = data;
 
-        for (const data of appointmentsData) {
-        const { appointmentId, treatments, ...updateFields } = data;
+      const appointment = await this.db.Appointment.findOne({ where: { appointmentId }, transaction });
 
-        // Fetch the existing appointment
-        const appointment = await this.db.Appointment.findOne({ where: { appointmentId } });
-        if (!appointment) {
-            throw new Error(`Appointment with ID ${appointmentId} not found.`);
+      if (!appointment) {
+        throw new Error(`Appointment with ID ${appointmentId} not found.`);
+      }
+
+      // Update fields if provided
+      if (date) appointment.date = date;
+      if (time) appointment.time = time;
+      if (medicId) appointment.medicUser = medicId;
+      if (patientId) appointment.patientUser = patientId;
+      if (price !== undefined) appointment.price = price;
+      if (isDone !== undefined) appointment.isDone = isDone;
+      if (isPaid !== undefined) appointment.isPaid = isPaid;
+
+      // Update status based on date and time
+      if (date || time) {
+        const appointmentDateTime = new Date(`${appointment.date}T${appointment.time}`);
+        const currentDateTime = new Date();
+        if (appointmentDateTime > currentDateTime && !isDone && !isPaid) {
+          appointment.status = 'upcoming';
         }
+      }
 
-        // Update fields on the appointment
-        await appointment.update(updateFields);
+      await appointment.save({ transaction });
 
-        // If treatments are provided, update them
-        if (Array.isArray(treatments)) {
-            // Fetch existing treatments
-            const existingTreatments = await this.db.AppointmentTreatment.findAll({
-            where: { appointmentId },
-            });
+      // Update treatments if provided
+      if (Array.isArray(treatments)) {
+        const existingTreatments = await this.db.AppointmentTreatment.findAll({
+          where: { appointmentId },
+          transaction,
+        });
 
-            const existingTreatmentMap = new Map(
-            existingTreatments.map((treatment) => [`${treatment.appointmentId}-${treatment.treatmentId}`, treatment])
-            );
+        const existingTreatmentMap = new Map(
+          existingTreatments.map((t) => [`${t.appointmentId}-${t.treatmentId}`, t])
+        );
 
-            // Update or create treatments
-            for (const treatment of treatments) {
-            const key = `${appointmentId}-${treatment.treatmentId}`;
-            if (existingTreatmentMap.has(key)) {
-                const existingTreatment = existingTreatmentMap.get(key);
-
-                if ('units' in treatment) existingTreatment.units = treatment.units;
-                if ('involvedTeeth' in treatment) existingTreatment.involvedTeeth = treatment.involvedTeeth;
-                if ('prescription' in treatment) existingTreatment.prescription = treatment.prescription;
-                if ('details' in treatment) existingTreatment.details = treatment.details;
-
-                await existingTreatment.save();
-                existingTreatmentMap.delete(key);
-            } else {
-                // Create new treatment
-                await this.db.AppointmentTreatment.create({
+        for (const treatment of treatments) {
+          const key = `${appointmentId}-${treatment.treatmentId}`;
+          if (existingTreatmentMap.has(key)) {
+            const existingTreatment = existingTreatmentMap.get(key);
+            if ('units' in treatment) existingTreatment.units = treatment.units;
+            if ('involvedTeeth' in treatment) existingTreatment.involvedTeeth = treatment.involvedTeeth;
+            if ('prescription' in treatment) existingTreatment.prescription = treatment.prescription;
+            if ('details' in treatment) existingTreatment.details = treatment.details;
+            await existingTreatment.save({ transaction });
+            existingTreatmentMap.delete(key);
+          } else {
+            // Create new treatment
+            await this.db.AppointmentTreatment.create(
+              {
                 appointmentId,
                 treatmentId: treatment.treatmentId,
                 units: treatment.units || 1,
                 involvedTeeth: treatment.involvedTeeth || [],
                 prescription: treatment.prescription || '',
                 details: treatment.details || '',
-                });
-            }
-            }
-
-            // Remove treatments not present in the updated list
-            for (const [_, existingTreatment] of existingTreatmentMap.entries()) {
-            await existingTreatment.destroy();
-            }
+              },
+              { transaction }
+            );
+          }
         }
 
-        updatedAppointments.push(appointment);
+        // Remove treatments not in the updated list
+        for (const [, existingTreatment] of existingTreatmentMap.entries()) {
+          await existingTreatment.destroy({ transaction });
         }
+      }
 
-        return updatedAppointments;
+      return appointment;
     }
 
+    // Update multiple appointments
+    async updateAppointments(appointmentsData) {
+      const transaction = await this.db.clinicSequelize.transaction();
+      try {
+        const updatedAppointments = [];
+
+        for (const data of appointmentsData) {
+          const updatedAppointment = await this.updateSingleAppointment(data, transaction);
+          updatedAppointments.push(updatedAppointment);
+        }
+
+        await transaction.commit();
+        return updatedAppointments;
+      } catch (error) {
+        await transaction.rollback();
+        throw new Error(`Failed to update appointments: ${error.message}`);
+      }
+    }
+
+
     // **Delete Appointment(s)**
-    async deleteAppointments(appointmentIds) {
+    async deletedAppointments(appointmentIds) {
         const deletedAppointments = [];
 
         for (const appointmentId of appointmentIds) {
@@ -231,7 +273,7 @@ class AppointmentService {
     // **Get Medic Appointments**
     async getMedicAppointments(medicId, today, limit = 10) {
         const whereCondition = {
-        date: { [this.db.Sequelize.Op.gte]: today },
+        date: { [Op.gte]: today },
         };
 
         if (medicId) {
