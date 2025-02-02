@@ -173,6 +173,7 @@ const initializeClinicDatabase = (dbName) => {
     otherKey: 'componentId',
     as: 'components',
   });
+
   Component.belongsToMany(Treatment, {
     through: TreatmentComponent,
     foreignKey: 'componentId',
@@ -182,7 +183,17 @@ const initializeClinicDatabase = (dbName) => {
 
   TreatmentComponent.belongsTo(Component, {
     foreignKey: 'componentId',
-    as: 'component', // Alias to be used in eager loading
+    as: 'componentDetails', // Alias to be used in eager loading
+  });
+
+  TreatmentComponent.belongsTo(Treatment, {
+    foreignKey: 'treatmentId',
+    as: 'treatment', // ✅ Correct association
+  });
+
+  Treatment.hasMany(TreatmentComponent, {
+    foreignKey: 'treatmentId',
+    as: 'treatmentComponents', // ✅ Alias must match service query
   });
 
 
@@ -197,6 +208,7 @@ const initializeClinicDatabase = (dbName) => {
     foreignKey: 'treatmentId',
     as: 'appointmentTreatments',
   });
+
 
 
 
