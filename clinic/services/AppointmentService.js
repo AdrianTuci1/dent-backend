@@ -1,3 +1,4 @@
+const { getTodayRange } = require('../../utils/dateUtils');
 const { generateAppointmentId } = require('../../utils/generateAppointmentId')
 const { Op } = require('sequelize')
 
@@ -12,7 +13,7 @@ class AppointmentService {
   
       for (const data of appointmentsData) {
         // Generate a new appointment ID
-        const appointmentId = await generateAppointmentId();
+        const appointmentId = await generateAppointmentId(db);
   
         // Create appointment
         const appointment = await this.db.Appointment.create({
@@ -270,58 +271,54 @@ class AppointmentService {
         }));
     }
 
-    // **Get Medic Appointments**
-    async getMedicAppointments(medicId, today, limit = 10) {
-        const whereCondition = {
-        date: { [Op.gte]: today },
-        };
-
-        if (medicId) {
-        whereCondition.medicUser = medicId;
-        }
-
+    // **Get Medic Appointments (Next 10)**
+    async getMedicAppointments(medicId, limit = 10, offset = 0) {
+      try {
         const appointments = await this.db.Appointment.findAll({
-        where: whereCondition,
-        include: [
+          where: { medicUser: medicId }, // Ensure correct FK reference
+          order: [["date", "ASC"], ["time", "ASC"]], // Sort by date & time
+          limit: parseInt(limit, 10),
+          offset: parseInt(offset, 10),
+          include: [
             {
-            model: this.db.ClinicUser,
-            as: 'medic',
-            attributes: ['id', 'name'],
-            },
-            {
-            model: this.db.ClinicUser,
-            as: 'patient',
-            attributes: ['id', 'name'],
+              model: this.db.ClinicUser,
+              as: "patient", // Include patient details
+              attributes: ["id", "name"],
             },
             {
-            model: this.db.AppointmentTreatment,
-            as: 'AppointmentTreatments',
-            include: {
-                model: this.db.Treatment,
-                as: 'treatmentDetails',
-                attributes: ['name', 'color'],
+              model: this.db.AppointmentTreatment,
+              as: "AppointmentTreatments",
+              include: [
+                {
+                  model: this.db.Treatment,
+                  as: "treatmentDetails",
+                  attributes: ["name", "color"],
+                },
+              ],
             },
-            },
-        ],
-        limit: parseInt(limit),
-        order: [['date', 'ASC'], ['time', 'ASC']],
+          ],
         });
 
+        // Format the response
         return appointments.map((appointment) => ({
-        appointmentId: appointment.appointmentId,
-        date: appointment.date,
-        time: appointment.time,
-        patientUser: {
-            id: appointment.patient?.id,
-            name: appointment.patient?.name,
-        },
-        medicUser: {
-            id: appointment.medic?.id,
-            name: appointment.medic?.name,
-        },
-        initialTreatment: appointment.AppointmentTreatments[0]?.treatmentDetails?.name || null,
-        color: appointment.AppointmentTreatments[0]?.treatmentDetails?.color || '#34abeb',
+          appointmentId: appointment.appointmentId, // Ensure correct ID field
+          date: appointment.date,
+          time: appointment.time,
+          patientUser: appointment.patient
+            ? {
+                id: appointment.patient.id,
+                name: appointment.patient.name,
+              }
+            : null,
+          initialTreatment:
+            appointment.AppointmentTreatments?.[0]?.treatmentDetails?.name || null,
+          color:
+            appointment.AppointmentTreatments?.[0]?.treatmentDetails?.color || "#34abeb",
         }));
+      } catch (error) {
+        console.error("Error fetching medic appointments:", error);
+        throw new Error("Error fetching medic appointments: " + error.message);
+      }
     }
   }
   

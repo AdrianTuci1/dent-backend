@@ -141,6 +141,7 @@ class TreatmentService {
           name: treatment.name,
           price: treatment.price,
           duration: treatment.duration,
+          description: treatment.description,
           color: treatment.color,
           category: treatment.category,
           components: treatment.treatmentComponents.map((tc) => ({

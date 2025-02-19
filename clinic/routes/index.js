@@ -16,9 +16,12 @@ const searchRoutes = require('./searchRoutes');
 const dentalHistoryRoutes = require('./dentalHistoryRoutes')
 const permissionsRoutes = require('./permissionsRoutes')
 const syncRoutes = require('./syncRoutes')
+const clinicDataRoutes = require('./clinicRoutes')
 
 // Apply clinic database middleware globally
 router.use(clinicDatabaseMiddleware);
+
+router.use('/clinic', clinicDataRoutes);
 
 // Authenticated routes
 router.use('/appointments', authenticateMiddleware, appointmentRoutes);

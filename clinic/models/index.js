@@ -1,4 +1,6 @@
 const Sequelize = require('sequelize');
+
+const clinicInfoModel = require('./Clinic');
 const clinicUserModel = require('./clinicUser');
 const patientModel = require('./patient');
 const medicModel = require('./medic');
@@ -23,6 +25,7 @@ const initializeClinicDatabase = (dbName) => {
   });
 
   // Initialize all models
+  const ClinicInfo = clinicInfoModel(clinicSequelize, Sequelize.DataTypes)
   const ClinicUser = clinicUserModel(clinicSequelize, Sequelize.DataTypes);
   const Patient = patientModel(clinicSequelize, Sequelize.DataTypes);
   const Medic = medicModel(clinicSequelize, Sequelize.DataTypes);
@@ -242,6 +245,7 @@ const initializeClinicDatabase = (dbName) => {
   };
 
   return {
+    ClinicInfo,
     clinicSequelize,
     ClinicUser,
     Patient,

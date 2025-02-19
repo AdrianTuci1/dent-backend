@@ -136,25 +136,21 @@ class AppointmentController {
 
   async getMedicAppointments(req, res) {
     const { medicId } = req.params;
-    const { today } = getTodayRange();
-
+    const { limit, offset } = req.query;
+  
     try {
       const appointmentService = new AppointmentService(req.db);
-      const appointments = await appointmentService.getMedicAppointments(medicId, today);
-
-      if (!appointments.length) {
-        return res.status(404).json({ message: 'No appointments found for this medic.' });
-      }
-
+      const appointments = await appointmentService.getMedicAppointments(medicId, limit, offset);
+  
       res.status(200).json({
         appointments,
-        message: 'Upcoming appointments fetched successfully',
+        message: "Medic appointments fetched successfully",
       });
     } catch (error) {
-      console.error('Error fetching medic appointments:', error);
-      res.status(500).json({ message: 'Error fetching medic appointments', error: error.message });
+      console.error("Error fetching medic appointments:", error);
+      res.status(500).json({ message: "Error fetching medic appointments", error: error.message });
     }
-  }
+  };
 }
 
 module.exports = AppointmentController;
