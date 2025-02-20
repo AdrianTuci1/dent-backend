@@ -19,6 +19,7 @@ function setupAppointmentsWebSocket(wss) {
     }
     connections.get(subdomain).add(ws);
 
+
     // Handle incoming messages
     ws.on('message', (message) => {
       handleMessage(ws, message);

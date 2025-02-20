@@ -1,12 +1,13 @@
 const AppointmentService = require('../services/AppointmentService');
 const { getTodayRange } = require('../../utils/dateUtils');
 const { broadcastUpdatedAppointment } = require('../middleware/broadcastUpdatedAppointment');
-const { deleteAppointment, getAppointments } = require('../../websockets/appointmentsState');
 const { broadcastToSubdomain } = require('../../websockets/broadcast');
 
 
 
+
 class AppointmentController {
+
   async createItems(req) {
     const appointmentService = new AppointmentService(req.db);
 
@@ -77,16 +78,14 @@ class AppointmentController {
       // Delete appointments from the database
       await appointmentService.deletedAppointments(appointmentIds);
 
-      // Update in-memory state and broadcast changes
-      for (const appointmentId of appointmentIds) {
-        deleteAppointment(subdomain, appointmentId); // Remove from in-memory state
-      }
 
-      // Broadcast the updated appointments list
-      broadcastToSubdomain(subdomain, {
-        type: 'appointments',
-        action: 'view',
-        data: getAppointments(subdomain), // Get the updated appointments
+      // 📌 Broadcast each deleted appointment individually
+      appointmentIds.forEach((appointmentId) => {
+        broadcastToSubdomain(subdomain, {
+          type: "appointments",
+          action: "delete",
+          data: { appointmentId }, // Send each appointmentId separately
+        });
       });
 
       return {
@@ -97,6 +96,7 @@ class AppointmentController {
       throw new Error(`Failed to delete appointments: ${error.message}`);
     }
   }
+
 
 
   async getAppointmentDetails(req, res) {

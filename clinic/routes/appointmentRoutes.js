@@ -3,8 +3,6 @@ const AppointmentController = require('../controllers/appointmentController');
 const {
   updateAppointmentTreatments
 } = require('../controllers/appointmentTreatmentController');
-const { broadcastUpdatedAppointment } = require('../middleware/broadcastUpdatedAppointment');
-
 const router = express.Router();
 
 

@@ -1,6 +1,5 @@
 const { calculateEndHour } = require('../../utils/calcultateEndHour');
 const { broadcastToSubdomain } = require('../../websockets/broadcast');
-const { updateAppointment } = require('../../websockets/appointmentsState');
 
 exports.broadcastUpdatedAppointment = async (req, res) => {
   const { updatedAppointmentId } = req; // Extract necessary details from the request
@@ -78,13 +77,11 @@ exports.broadcastUpdatedAppointment = async (req, res) => {
     updatedAppointment.status = enrichedData.status;
     await updatedAppointment.save();
 
-    // Update the in-memory state
-    updateAppointment(subdomain, enrichedData);
 
     // Broadcast enriched data
     broadcastToSubdomain(subdomain, {
       type: 'appointments',
-      action: 'view',
+      action: 'update',
       data: enrichedData,
     });
 
