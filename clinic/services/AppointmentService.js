@@ -1,6 +1,4 @@
-const { getTodayRange } = require('../../utils/dateUtils');
 const { generateAppointmentId } = require('../../utils/generateAppointmentId')
-const { Op } = require('sequelize')
 
 class AppointmentService {
     constructor(db) {

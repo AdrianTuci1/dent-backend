@@ -92,28 +92,11 @@ const createAdminAndMedic = async (models, transaction) => {
   }, { transaction });
   console.log('Medic 3 profile created:', medicProfile3.toJSON());
 
-  // Step 5: Seed Permissions for All Medics and Admin Subaccount
-  const permissionData = [
-    { name: 'allAppointments', description: 'poate vedea toate rezervările' },
-    { name: 'editTreatments', description: 'poate adăuga tratamente' },
-    { name: 'editStock', description: 'poate modifica stocul' },
-    { name: 'editPermissions', description: 'poate edita permisiunile' },
-    { name: 'resetOthersPin', description: 'poate reseta pinul' },
-    { name: 'addOthersAppointments', description: 'poate adauga rezervări pentru altcineva' },
-    { name: 'viewGraph', description: 'poate vedea grafice' },
-    { name: 'editMedics', description: 'poate modifica medicii' },
-    { name: 'viewRecords', description: 'vedea propriile rezervări (pacient)' },
-    { name: 'requestAppointment', description: 'cere o rezervare' }
-  ];
 
-  const permissions = await Permission.bulkCreate(permissionData, { transaction });
-  console.log('Permissions seeded.');
 
-  const medicEnabledPermissions = [
-    'allAppointments', 'editTreatments', 'editStock', 'editPermissions', 'resetOthersPin', 
-    'addOthersAppointments', 'viewGraph', 'editMedics', 'viewRecords', 'requestAppointment'
-  ];
-  const adminEnabledPermissions = permissionData.map(p => p.name);
+
+  // Step 3: Fetch Permissions
+  const permissions = await Permission.findAll({ transaction });
 
   const createUserPermissions = (userId, enabledPermissions) =>
     permissions.map(permission => ({
@@ -122,11 +105,14 @@ const createAdminAndMedic = async (models, transaction) => {
       isEnabled: enabledPermissions.includes(permission.name),
     }));
 
+  const medicEnabledPermissions = permissions.map(p => p.name);
+  const adminEnabledPermissions = permissions.map(p => p.name);
+
+  // Step 4: Assign Permissions
   await ClinicUserPermission.bulkCreate(createUserPermissions(medicUser.id, medicEnabledPermissions), { transaction });
   await ClinicUserPermission.bulkCreate(createUserPermissions(medicUser2.id, medicEnabledPermissions), { transaction });
   await ClinicUserPermission.bulkCreate(createUserPermissions(medicUser3.id, medicEnabledPermissions), { transaction });
   await ClinicUserPermission.bulkCreate(createUserPermissions(adminSubaccount.id, adminEnabledPermissions), { transaction });
-  console.log('Permissions assigned to Medic, Medic 2, Medic 3, and Admin Subaccount users');
 
   // Step 6: Seed Working Days and Hours for All Medics
   const workingDaysHoursData1 = [

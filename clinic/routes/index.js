@@ -17,6 +17,7 @@ const dentalHistoryRoutes = require('./dentalHistoryRoutes')
 const permissionsRoutes = require('./permissionsRoutes')
 const syncRoutes = require('./syncRoutes')
 const clinicDataRoutes = require('./clinicRoutes')
+const miscRoutes = require('./miscRoutes')
 
 // Apply clinic database middleware globally
 router.use(clinicDatabaseMiddleware);
@@ -37,6 +38,7 @@ router.use('/requests', requestAppointmentRoutes);
 router.use('/search', searchRoutes);
 router.use('/dentalHistory', dentalHistoryRoutes);
 router.use('/permissions', permissionsRoutes);
+router.use('/misc', miscRoutes)
 
 router.use('/sync', syncRoutes);
 

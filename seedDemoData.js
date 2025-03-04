@@ -11,6 +11,7 @@ const createAppointments = require('./seedData/createAppointments');
 const createAvailabilitySlots = require('./seedData/createAvailabilitySlots');
 const createClinicAvailability = require('./seedData/createClinicAvailability');
 const createPatientRequests = require('./seedData/createPatientRequests');
+const createPermissions = require('./seedData/createPermission');
 
 const seedDemoData = async () => {
   try {
@@ -110,10 +111,11 @@ const seedDemoData = async () => {
           ClinicAvailability,
         };
 
+        await createPermissions(models, transaction);
         const { medicUser, medicUser2, medicUser3 } = await createAdminAndMedic(models, transaction);
         const patientUser = await createPatients(models, transaction);
-        const component = await createComponents(models, transaction);
-        const treatment = await createTreatments(models, component, transaction);
+        await createComponents(models, transaction);
+        const treatment = await createTreatments(models, transaction);
         await createAppointments(models, patientUser, medicUser, medicUser2, medicUser3, treatment, transaction);
 
         // Seed Availability Slots

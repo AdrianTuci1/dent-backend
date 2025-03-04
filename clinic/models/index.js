@@ -14,6 +14,8 @@ const permissionModel = require('./permission');
 const clinicUserPermissionModel = require('./clinicUserPermission');
 const workingDaysHoursModel = require('./workingDaysHours')
 const daysOffModel = require('./daysOff')
+const promotionsModel = require('./promotions')
+const highlightedModel = require('./highlighted')
 
 const availabilitySlotsModel = require('./AvailabilitySlots');
 const patientRequestModel = require('./PatientRequest');
@@ -42,6 +44,8 @@ const initializeClinicDatabase = (dbName) => {
   const AvailabilitySlots = availabilitySlotsModel(clinicSequelize, Sequelize.DataTypes);
   const PatientRequest = patientRequestModel(clinicSequelize, Sequelize.DataTypes);
   const ClinicAvailability = clinicAvailabilityModel(clinicSequelize, Sequelize.DataTypes);
+  const Promotion = promotionsModel(clinicSequelize, Sequelize.DataTypes)
+  const Highlighted = highlightedModel(clinicSequelize, Sequelize.DataTypes)
 
   // Set up associations
 
@@ -213,6 +217,13 @@ const initializeClinicDatabase = (dbName) => {
   });
 
 
+  // 📌 `Promotion` belongs only to `Treatment`
+  Promotion.belongsTo(Treatment, { foreignKey: 'referenceId' });
+  Treatment.hasMany(Promotion, { foreignKey: 'referenceId' });
+
+// 📌 `Highlighted` belongs only to `Treatment`
+  Highlighted.belongsTo(Treatment, { foreignKey: 'referenceId' });
+  Treatment.hasMany(Highlighted, { foreignKey: 'referenceId' });
 
 
     // ClinicUser hasMany PatientRequests as both patient and medic
@@ -233,6 +244,7 @@ const initializeClinicDatabase = (dbName) => {
   // If using DentalHistory model
   ClinicUser.hasMany(DentalHistory, { foreignKey: 'patientId', as: 'dentalHistories' });
   DentalHistory.belongsTo(ClinicUser, { foreignKey: 'patientId', as: 'patient' });
+
 
   // Sync the database
   const syncClinicDatabase = async () => {
@@ -263,6 +275,8 @@ const initializeClinicDatabase = (dbName) => {
     AvailabilitySlots,
     PatientRequest,
     ClinicAvailability,
+    Highlighted,
+    Promotion,
     syncClinicDatabase,
   };
 };
